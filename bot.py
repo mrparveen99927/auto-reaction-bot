@@ -48,7 +48,7 @@ HELPER_BOTS = [
 def read_root():
     return {"status": "VIP 23-Bots Webhook Engine is Online 24/7"}
 
-# टेलीग्राम से मैसेज रिसीव करने का सीक्रेट वेबहुक रास्ता
+# टेलीग्राम से मैसेज रिसीव करने का वेबहुक रूट
 @api_app.post("/telegram")
 async def telegram_webhook(request: Request):
     json_data = await request.json()
@@ -63,14 +63,14 @@ async def start(update: Update, context):
             "👉 लॉगिन करने के लिए अपना पासवर्ड इस तरह भेजें:\n"
             "`/login आपका_पासवर्ड`"
         )
-        async def login(update: Update, context):
+
+async def login(update: Update, context):
     if update.effective_chat.type != "private":
         return
     try:
         user_password = context.args[0]
         if user_password == VIP_PASSWORD or update.effective_user.id == ADMIN_ID:
             context.user_data['is_vip'] = True
-            
             keyboard = []
             row = []
             for i, bot in enumerate(HELPER_BOTS, start=1):
@@ -81,7 +81,6 @@ async def start(update: Update, context):
                     row = []
             if row:
                 keyboard.append(row)
-                
             reply_markup = InlineKeyboardMarkup(keyboard)
             await update.message.reply_text(
                 "🎉 *लॉगिन सफल! आप वीआईपी मेंबर हैं।*\n\n"
@@ -115,7 +114,7 @@ async def help_command(update: Update, context):
 
 async def send_reaction_async(client, token, chat_id, message_id, reaction):
     try:
-        url = f"https://api.telegram.org/bot{token}/setMessageReaction"
+        url = f"https://telegram.org{token}/setMessageReaction"
         data = {"chat_id": chat_id, "message_id": message_id, "reaction": [{"type": "emoji", "emoji": reaction}], "is_big": True}
         await client.post(url, json=data, timeout=5)
     except Exception:
@@ -126,13 +125,11 @@ async def auto_react(update: Update, context):
         return
     group_id = update.effective_chat.id
     message_id = update.message.message_id
-    
     premium_reactions = ["👍", "❤️", "🔥", "🎉", "🤩", "🚀", "🥰", "👏", "⚡", "😎"]
     async with httpx.AsyncClient() as client:
         tasks = [send_reaction_async(client, bot["token"], group_id, message_id, random.choice(premium_reactions)) for bot in HELPER_BOTS]
         await asyncio.gather(*tasks)
 
-# रेंडर पर लाइफस्पैन बाइंडिंग जो बिना क्रैश हुए 1 सेकंड में लाइव होती है
 @api_app.on_event("startup")
 async def on_startup():
     bot_app.add_handler(CommandHandler("start", start))
@@ -140,13 +137,8 @@ async def on_startup():
     bot_app.add_handler(CommandHandler("setup", setup_group))
     bot_app.add_handler(CommandHandler("help", help_command))
     bot_app.add_handler(MessageHandler(filters.ChatType.GROUPS & ~filters.COMMAND, auto_react))
-    
     await bot_app.initialize()
     await bot_app.start()
-    
-    # रेंडर की सीक्रेट लाइव लिंक सेट करना (वेबहुक एक्टिवेशन)
-    # रेंडर के एनवायरनमेंट में अपने आप इसकी मैपिंग हो जाएगी
-    logging.info("🚀 Webhook Engine Started Successfully!")
 
 if __name__ == '__main__':
     uvicorn.run(api_app, host="0.0.0.0", port=10000)
