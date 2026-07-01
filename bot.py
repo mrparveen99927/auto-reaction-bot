@@ -1,21 +1,51 @@
 import logging
 import random
 import threading
+import httpx
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from database import generate_user_credentials, login_and_lock_group, is_group_allowed, get_all_active_users
 
+# आपका मुख्य एडमिन मास्टर बॉट (FastAutoReact_bot)
 BOT_TOKEN = "8843244865:AAGS47kvrD-ZeOTr-EgxSYFoYY-Cg3SJk-A"
 ADMIN_ID = 1780858471  
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s', level=logging.INFO)
 
+# सभी 23 बॉट्स के टोकन और उनके यूजरनेम्स की लिस्ट (पूरी सेना)
+HELPER_BOTS = [
+    {"token": "7759702480:AAF9Wts-mQJwo-kABbLH-07efM8oKicdhcM", "username": "FastReact1_bot"},
+    {"token": "8868273049:AAGbuicV1ytedATSges9dzVeOoBrKbpVfkw", "username": "FastReact2_bot"},
+    {"token": "8465196381:AAFkCeVgwlzdJKjm80S8bC248AQ3Q4lKzNw", "username": "FastReact3_bot"},
+    {"token": "8990617369:AAGcVjb__c0DPfYyrPteEg3RqtvI75OVMJU", "username": "FastReact4_bot"},
+    {"token": "8762982479:AAFpoIEsDKmgNG16Ql56J6F-OPY_1dGGQVg", "username": "FastReact5_bot"},
+    {"token": "8616922120:AAEZ8xHmIIfqxGMQUkbEHOIGplIPT5uJsc4", "username": "FastReact6_bot"},
+    {"token": "8954445996:AAEvH-lySAk5FGWX96Bv3i7FA3Dp1X9icVg", "username": "FastReact7_bot"},
+    {"token": "8728914922:AAHmWtKYSr_y7Fy9oOYzxMQHgJYze3dmkVk", "username": "FastReact8_bot"},
+    {"token": "8402811457:AAHfQIaYHFdBw12pF9zoapl29nYjRhBIUjs", "username": "FastReact9_bot"},
+    {"token": "8504826070:AAHAVnCIh0kOMqqFW6UX7nfVOFuRuSmjZJY", "username": "FastReact10_bot"},
+    {"token": "8864706900:AAG3kAzTOzUDiAlkI-Fahn3V5zyP8MTnhqY", "username": "FastReact11_bot"},
+    {"token": "8712704500:AAG73EN_YxzXFR7k3pZVSzSLHse99abIz3o", "username": "FastReact12_bot"},
+    {"token": "8472836823:AAEgwxV2fldYR7KNPlRVdRwjml03-Rpo9h4", "username": "FastReact13_bot"},
+    {"token": "8519620118:AAESBKU5JF2LrqNvaufnO3u9aFCLZ8iuElQ", "username": "FastReact14_bot"},
+    {"token": "8519620118:AAESBKU5JF2LrqNvaufnO3u9aFCLZ8iuElQ", "username": "FastReact15_bot"},
+    {"token": "8684813874:AAFRp1IdRH9Cv19T7g_3BDynCPoy_DAGseA", "username": "FastReact15_bot"},
+    {"token": "8724817204:AAGg2Z4VTcqpQPAJfqLJCUZyPWurQdeDi4g", "username": "FastReact15_bot"},
+    {"token": "8818097026:AAFeL60mwgwhngaVxSSHtkdAru2F260Nprg", "username": "FastReact15_bot"},
+    {"token": "8906790488:AAHiY5IqITVi6LC7mC6cvil79TOHqeU6L_Y", "username": "FastReact15_bot"},
+    {"token": "8648415907:AAF0FtTCBtKr7ATqIJmKmdVgR9mLIXaUw5A", "username": "FastReact15_bot"},
+    {"token": "8649993032:AAFzyrnLIMz9MP5lH9uJRb8t7xX98ngk9OA", "username": "FastReact21_bot"},
+    {"token": "8996480629:AAHMUotLfpF7312HZLP4xuPiUx1EGQ1bXHc", "username": "FastReact22_bot"},
+    {"token": "8963701519:AAHJ5GfL6yavqWuTr9ixGxdMc6V1JSiqSbI", "username": "FastReact23_bot"}
+]
+
+# Render Free Plan पर ज़िंदा रखने के लिए वेब सर्वर
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"Bot is Running 24/7!")
+        self.wfile.write(b"23 Bots Multi-Reaction Engine is Online!")
 
 def run_health_server():
     try:
@@ -25,19 +55,16 @@ def run_health_server():
         print(f"Server Error: {e}")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_type = update.effective_chat.type
-    if chat_type == "private":
+    if update.effective_chat.type == "private":
         await update.message.reply_text(
-            "👋 नमस्ते! इस ऑटो-रिएक्शन बॉट का उपयोग करने के लिए लॉगिन करें।\n\n"
+            "👋 नमस्ते! इस 23× मल्टी-ऑटो-रिएक्शन वीआईपी बॉट का उपयोग करने के लिए लॉगिन करें।\n\n"
             "👉 लॉगिन करने के लिए इस तरह मैसेज भेजें:\n"
             "`/login [Access_ID] [Password]`\n\n"
             "💡 कमांड्स की पूरी जानकारी के लिए `/help` टाइप करें।"
         )
-
-async def gen_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        async def gen_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
-
     try:
         access_id = context.args[0]
         password = context.args[1]
@@ -57,10 +84,8 @@ async def gen_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ सही तरीका: `/gen_user [ID] [Password] [Days]`")
 
 async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_type = update.effective_chat.type
-    if chat_type != "private":
+    if update.effective_chat.type != "private":
         return
-
     try:
         access_id = context.args[0]
         password = context.args[1]
@@ -68,17 +93,27 @@ async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['access_id'] = access_id
         context.user_data['password'] = password
         
+        # ग्राहकों के लिए 1-क्लिक बटनों का ऑटोमैटिक जनरेशन
+        keyboard = []
+        for i, bot in enumerate(HELPER_BOTS, start=1):
+            link = f"https://t.me{bot['username']}?startgroup=true"
+            keyboard.append([InlineKeyboardButton(text=f"➕ ऐड करें बॉट {i} 🚀", url=link)])
+            
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
         await update.message.reply_text(
-            "🔑 क्रेडेंशियल दर्ज कर लिए गए हैं।\n\n"
-            "अब इस बॉट को अपने **ग्रुप में एडमिन** बनाएं और ग्रुप चैट में जाकर यह कमांड भेजें:\n"
-            "`/setup`"
+            "🔑 *क्रेडेंशियल दर्ज कर लिए गए हैं!*\n\n"
+            "🔥 अब नीचे दिए गए बटनों पर एक-एक करके क्लिक करें और सभी 23 बॉट्स को अपने ग्रुप में जोड़ें। (यह बहुत तेज़ और आसान है!)\n\n"
+            "⚠️ *महत्वपूर्ण:* सभी बॉट्स को ग्रुप में शामिल करने के बाद, अपने ग्रुप चैट में जाकर यह कमांड भेजें:\n"
+            "`/setup`",
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
         )
     except IndexError:
         await update.message.reply_text("❌ सही तरीका: `/login [ID] [Password]`")
 
 async def setup_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_type = update.effective_chat.type
-    if chat_type not in ["group", "supergroup"]:
+    if update.effective_chat.type not in ["group", "supergroup"]:
         await update.message.reply_text("❌ यह कमांड केवल ग्रुप के अंदर काम करेगी।")
         return
 
@@ -93,7 +128,7 @@ async def setup_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status = login_and_lock_group(access_id, password, group_id)
     
     if status == "success":
-        await update.message.reply_text("🎉 बधाई हो! यह ग्रुप इस आईडी के साथ हमेशा के लिए लॉक हो गया है। अब यहाँ ऑटो-रिएक्शन काम करेगा।")
+        await update.message.reply_text("🎉 बधाई हो! यह ग्रुप इस वीआईपी आईडी के साथ हमेशा के लिए लॉक हो गया है। अब यहाँ 23 गुना ऑटो-रिएक्शन ब्लास्ट काम करेगा।")
     elif status == "invalid":
         await update.message.reply_text("❌ गलत ID या पासवर्ड।")
     elif status == "expired":
@@ -102,17 +137,13 @@ async def setup_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ यह ग्रुप पहले से ही किसी अन्य ID के साथ लिंक है।")
     elif status == "wrong_group":
         await update.message.reply_text("❌ यह ID केवल आपके पहले से लॉक किए गए ग्रुप में ही उपयोग की जा सकती है।")
-
-# एडमिन के लिए सभी एक्टिव ग्राहकों की लिस्ट देखने का नया कमांड
-async def all_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        async def all_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
-
     users = get_all_active_users()
     if not users:
         await update.message.reply_text("👥 अभी कोई भी एक्टिव ग्राहक मौजूद नहीं है।")
         return
-
     response = "📋 *एक्टिव ग्राहकों की सूची:*\n\n"
     for u in users:
         response += (
@@ -124,47 +155,58 @@ async def all_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     await update.message.reply_text(response, parse_mode="Markdown")
 
-# सभी कमांड्स की लिस्ट देखने का नया कमांड (Help)
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    
     if user_id == ADMIN_ID:
         admin_help = (
             "🛠️ *मालिक (Admin) कमांड्स की सूची:*\n\n"
-            "🔹 `/gen_user [ID] [Pass] [Days]` \n"
-            "➔ नया ग्राहक बनाने या पुराने ग्राहक को रिन्यू करने के लिए।\n\n"
-            "🔹 `/all_users` \n"
-            "➔ सभी एक्टिव ग्राहकों की ID, पासवर्ड और बचे हुए दिनों की लिस्ट देखने के लिए।\n\n"
-            "🔹 `/help` \n"
-            "➔ यह कमांड गाइड देखने के लिए।"
+            "🔹 `/gen_user [ID] [Pass] [Days]` ➔ ग्राहक बनाने/रिन्यू करने के लिए।\n"
+            "?? `/all_users` ➔ एक्टिव ग्राहकों और उनके बचे हुए दिनों की लिस्ट।\n"
+            "🔹 `/help` ➔ गाइड देखने के लिए।"
         )
         await update.message.reply_text(admin_help, parse_mode="Markdown")
     else:
         user_help = (
             "⚙️ *ग्राहक (User) कमांड्स की सूची:*\n\n"
-            "🔹 `/start` \n"
-            "➔ बॉट को शुरू करने और बेसिक जानकारी के लिए।\n\n"
-            "🔹 `/login [ID] [Pass]` \n"
-            "➔ बॉट के इनबॉक्स में अपना क्रेडेंशियल डालकर लॉगिन करने के लिए।\n\n"
-            "🔹 `/setup` \n"
-            "➔ बॉट को अपने ग्रुप में एडमिन बनाकर, ग्रुप के अंदर यह कमांड चलाएं ताकि ग्रुप लॉक हो सके।\n\n"
-            "🔹 `/help` \n"
-            "➔ कमांड्स की जानकारी के लिए।"
+            "🔹 `/start` ➔ बॉट की बेसिक जानकारी के लिए।\n"
+            "🔹 `/login [ID] [Pass]` ➔ इनबॉक्स में लॉगिन करके 23 बॉट्स के बटन पाने के लिए।\n"
+            "🔹 `/setup` ➔ ग्रुप के अंदर भेजें ताकि ग्रुप लॉक हो सके।\n"
+            "🔹 `/help` ➔ कमांड्स की जानकारी के लिए।"
         )
         await update.message.reply_text(user_help, parse_mode="Markdown")
 
+# 23 बॉट्स का एक साथ रिएक्शन ब्लास्ट भेजने के लिए थ्रेड फंक्शन (फास्ट स्पीड के लिए)
+def send_reaction_sync(token, chat_id, message_id, reaction):
+    try:
+        url = f"https://telegram.org{token}/setMessageReaction"
+        data = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "reaction": [{"type": "emoji", "emoji": reaction}],
+            "is_big": True
+        }
+        httpx.post(url, json=data, timeout=5)
+    except Exception:
+        pass
+
+# मुख्य ऑटो-रिएक्शन लॉजिक
 async def auto_react(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
         
     group_id = update.effective_chat.id
+    message_id = update.message.message_id
+    
     if is_group_allowed(group_id):
-        try:
-            premium_reactions = ["👍", "❤️", "🔥", "🎉", "🤩", "🚀", "🥰", "👏", "⚡", "😎"]
+        premium_reactions = ["👍", "❤️", "🔥", "🎉", "🤩", "🚀", "🥰", "👏", "⚡", "😎"]
+        
+        for bot in HELPER_BOTS:
             chosen_reaction = random.choice(premium_reactions)
-            await update.message.set_reaction(reaction=chosen_reaction)
-        except Exception as e:
-            print(f"Reaction Error: {e}")
+            t = threading.Thread(
+                target=send_reaction_sync, 
+                args=(bot["token"], group_id, message_id, chosen_reaction)
+            )
+            t.start()
 
 def main():
     threading.Thread(target=run_health_server, daemon=True).start()
@@ -180,7 +222,7 @@ def main():
     
     app.add_handler(MessageHandler(filters.ChatType.GROUPS & ~filters.COMMAND, auto_react))
 
-    print("🚀 बॉट चालू हो रहा है...")
+    print("🚀 23-Bots Multi-Engine चालू हो रहा है...")
     app.run_polling()
 
 if __name__ == '__main__':

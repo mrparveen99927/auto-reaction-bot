@@ -21,10 +21,14 @@ def generate_user_credentials(access_id, password, days=30):
     cursor = conn.cursor()
     expiry = (datetime.now() + timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
     try:
-        cursor.execute(
-            "INSERT INTO users (access_id, password, expiry_date) VALUES (?, ?, ?)",
-            (access_id, password, expiry)
-        )
+        cursor.execute('''
+            INSERT INTO users (access_id, password, expiry_date, status) 
+            VALUES (?, ?, ?, 'active')
+            ON CONFLICT(access_id) DO UPDATE SET 
+            password=excluded.password, 
+            expiry_date=excluded.expiry_date,
+            status='active'
+        ''', (access_id, password, expiry))
         conn.commit()
         success = True
     except sqlite3.IntegrityError:
@@ -63,21 +67,17 @@ def login_and_lock_group(access_id, password, group_id):
         conn.close()
         return "wrong_group"
 
-init_db()
-# यह नया फ़ंक्शन जो छूट गया था
 def is_group_allowed(group_id):
     conn = sqlite3.connect("bot_users.db")
     cursor = conn.cursor()
     cursor.execute("SELECT expiry_date FROM users WHERE group_id = ? AND status = 'active'", (group_id,))
     result = cursor.fetchone()
     conn.close()
-    
     if result:
-        from datetime import datetime
-        if datetime.now() < datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S'):
+        if datetime.now() < datetime.strptime(result, '%Y-%m-%d %H:%M:%S'):
             return True
     return False
-    # सभी एक्टिव यूजर्स की लिस्ट और बचे हुए दिन निकालने के लिए फंक्शन
+
 def get_all_active_users():
     conn = sqlite3.connect("bot_users.db")
     cursor = conn.cursor()
@@ -91,7 +91,6 @@ def get_all_active_users():
         expiry = datetime.strptime(expiry_date, '%Y-%m-%d %H:%M:%S')
         remaining = expiry - datetime.now()
         
-        # अगर टाइम बचा है तो लिस्ट में जोड़ें, वरना एक्सपायर मानेंगे
         if remaining.total_seconds() > 0:
             days = remaining.days
             hours = remaining.seconds // 3600
@@ -103,4 +102,5 @@ def get_all_active_users():
                 "group": group_id if group_id else "लिंक नहीं है"
             })
     return user_list
-    
+
+init_db()
