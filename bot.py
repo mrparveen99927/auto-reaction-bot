@@ -1,4 +1,7 @@
 import logging
+import random
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from database import generate_user_credentials, login_and_lock_group, is_group_allowed
@@ -6,10 +9,25 @@ from database import generate_user_credentials, login_and_lock_group, is_group_a
 # आपका Telegram Bot Token जो BotFather से मिला था
 BOT_TOKEN = "8843244865:AAGS47kvrD-ZeOTr-EgxSYFoYY-Cg3SJk-A"
 
-# आपकी असली Telegram Chat ID (अब यह पूरी तरह सेट है)
+# आपकी असली Telegram Chat ID (Admin ID)
 ADMIN_ID = 1780858471  
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s', level=logging.INFO)
+
+# Render Free Plan पर बॉट को हमेशा एक्टिव रखने के लिए वेब सर्वर
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is Running 24/7!")
+
+def run_health_server():
+    try:
+        # Render डिफ़ॉल्ट रूप से पोर्ट 10000 का उपयोग करता है
+        server = HTTPServer(('0.0.0.0', 10000), HealthCheckHandler)
+        server.serve_forever()
+    except Exception as e:
+        print(f"Server Error: {e}")
 
 # /start कमांड का जवाब
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -99,7 +117,7 @@ async def setup_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif status == "wrong_group":
         await update.message.reply_text("❌ यह ID केवल आपके पहले से लॉक किए गए ग्रुप में ही उपयोग की जा सकती है।")
 
-# मुख्य ऑटो-रिएक्शन लॉजिक
+# मुख्य ऑटो-रिएक्शन लॉजिक (10 रैंडम रिएक्शंस)
 async def auto_react(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
@@ -109,12 +127,21 @@ async def auto_react(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # चेक करें कि क्या यह ग्रुप किसी एक्टिव पेड ग्राहक का है
     if is_group_allowed(group_id):
         try:
-            # यहाँ डिफ़ॉल्ट रूप से थम्स अप '👍' रिएक्शन जाएगा
-            await update.message.set_reaction(reaction="👍")
+            # 10 सबसे लोकप्रिय रिएक्शंस की लिस्ट
+            premium_reactions = ["👍", "❤️", "🔥", "🎉", "🤩", "🚀", "🥰", "👏", "⚡", "😎"]
+            
+            # इनमें से कोई भी 1 रैंडम रिएक्शन चुना जाएगा
+            chosen_reaction = random.choice(premium_reactions)
+            
+            await update.message.set_reaction(reaction=chosen_reaction)
+            print(f"Success: Group {group_id} par '{chosen_reaction}' reaction diya.")
         except Exception as e:
             print(f"Reaction Error: {e}")
 
 def main():
+    # बैकग्राउंड में वेब सर्वर चालू करना ताकि Render इसे फ्री में लाइव रखे
+    threading.Thread(target=run_health_server, daemon=True).start()
+
     app = Application.builder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -122,7 +149,7 @@ def main():
     app.add_handler(CommandHandler("login", login))
     app.add_handler(CommandHandler("setup", setup_group))
     
-    # ग्रुप के सभी नए मैसेजेस को ट्रैक करने के लिए
+    # ग्रुप के सभी नए मैसेजेस पर रिएक्शन देने के लिए
     app.add_handler(MessageHandler(filters.ChatType.GROUPS & ~filters.COMMAND, auto_react))
 
     print("🚀 बॉट चालू हो रहा है...")
