@@ -1,8 +1,9 @@
 import logging
 import random
-import threading
+import asyncio
 import httpx
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import threading
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from database import generate_user_credentials, login_and_lock_group, is_group_allowed, get_all_active_users
@@ -13,7 +14,7 @@ ADMIN_ID = 1780858471
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s', level=logging.INFO)
 
-# सभी 23 बॉट्स की बिल्कुल सटीक लिस्ट (यूज़रनेम्स पूरी तरह ठीक हैं)
+# सभी 23 बॉट्स की बिल्कुल सटीक लिस्ट
 HELPER_BOTS = [
     {"token": "7759702480:AAF9Wts-mQJwo-kABbLH-07efM8oKicdhcM", "username": "FastReact1_bot"},
     {"token": "8868273049:AAGbuicV1ytedATSges9dzVeOoBrKbpVfkw", "username": "FastReact2_bot"},
@@ -159,16 +160,17 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await update.message.reply_text(user_help, parse_mode="Markdown")
 
-def send_reaction_sync(token, chat_id, message_id, reaction):
+# पूरी तरह Async रिएक्शन लॉजिक (बिना एरर वाला नया कोड)
+async def send_reaction_async(client, token, chat_id, message_id, reaction):
     try:
-        url = f"https://telegram.org{token}/setMessageReaction"
+        url = f"https://api.telegram.org/bot{token}/setMessageReaction"
         data = {
             "chat_id": chat_id,
             "message_id": message_id,
             "reaction": [{"type": "emoji", "emoji": reaction}],
             "is_big": True
         }
-        httpx.post(url, json=data, timeout=5)
+        await client.post(url, json=data, timeout=5)
     except Exception:
         pass
 
@@ -180,10 +182,14 @@ async def auto_react(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if is_group_allowed(group_id):
         premium_reactions = ["👍", "❤️", "🔥", "🎉", "🤩", "🚀", "🥰", "👏", "⚡", "😎"]
-        for bot in HELPER_BOTS:
-            chosen_reaction = random.choice(premium_reactions)
-            t = threading.Thread(target=send_reaction_sync, args=(bot["token"], group_id, message_id, chosen_reaction))
-            t.start()
+        
+        # बिना थ्रेडिंग के सभी 23 बॉट्स को समानांतर (Parallel) फायर करने का सुरक्षित तरीका
+        async with httpx.AsyncClient() as client:
+            tasks = []
+            for bot in HELPER_BOTS:
+                chosen_reaction = random.choice(premium_reactions)
+                tasks.append(send_reaction_async(client, bot["token"], group_id, message_id, chosen_reaction))
+            await asyncio.gather(*tasks)
 
 def main():
     threading.Thread(target=run_health_server, daemon=True).start()
