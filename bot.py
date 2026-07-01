@@ -130,6 +130,7 @@ async def auto_react(update: Update, context):
         tasks = [send_reaction_async(client, bot["token"], group_id, message_id, random.choice(premium_reactions)) for bot in HELPER_BOTS]
         await asyncio.gather(*tasks)
 
+# यह फंक्शन बॉट चालू होते ही अपने आप टेलीग्राम को आपका रेंडर लिंक बता देगा
 @api_app.on_event("startup")
 async def on_startup():
     bot_app.add_handler(CommandHandler("start", start))
@@ -137,9 +138,12 @@ async def on_startup():
     bot_app.add_handler(CommandHandler("setup", setup_group))
     bot_app.add_handler(CommandHandler("help", help_command))
     bot_app.add_handler(MessageHandler(filters.ChatType.GROUPS & ~filters.COMMAND, auto_react))
+    
     await bot_app.initialize()
     await bot_app.start()
-
-if __name__ == '__main__':
-    uvicorn.run(api_app, host="0.0.0.0", port=10000)
+    
+    # 🔥 जादू की लाइन: यहाँ आपका रेंडर लिंक अपने आप टेलीग्राम पर सेट हो जाएगा
+    your_render_url = "https://auto-reaction-bot-ayqv.onrender.com"
+    await bot_app.bot.set_webhook(url=your_render_url)
+    logging.info(f"🚀 Webhook automatically set to: {your_render_url}")
     
