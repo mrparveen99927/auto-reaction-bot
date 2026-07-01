@@ -77,4 +77,30 @@ def is_group_allowed(group_id):
         if datetime.now() < datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S'):
             return True
     return False
+    # सभी एक्टिव यूजर्स की लिस्ट और बचे हुए दिन निकालने के लिए फंक्शन
+def get_all_active_users():
+    conn = sqlite3.connect("bot_users.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT access_id, password, expiry_date, group_id FROM users WHERE status = 'active'")
+    rows = cursor.fetchall()
+    conn.close()
+    
+    user_list = []
+    for row in rows:
+        access_id, password, expiry_date, group_id = row
+        expiry = datetime.strptime(expiry_date, '%Y-%m-%d %H:%M:%S')
+        remaining = expiry - datetime.now()
+        
+        # अगर टाइम बचा है तो लिस्ट में जोड़ें, वरना एक्सपायर मानेंगे
+        if remaining.total_seconds() > 0:
+            days = remaining.days
+            hours = remaining.seconds // 3600
+            time_left = f"{days} दिन, {hours} घंटे"
+            user_list.append({
+                "id": access_id,
+                "pass": password,
+                "time": time_left,
+                "group": group_id if group_id else "लिंक नहीं है"
+            })
+    return user_list
     
