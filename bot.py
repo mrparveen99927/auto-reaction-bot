@@ -3,23 +3,16 @@ import random
 import asyncio
 import httpx
 import uvicorn
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from database import generate_user_credentials, login_and_lock_group, is_group_allowed, get_all_active_users
 
-# आपका मुख्य एडमिन मास्टर बॉट (FastAutoReact_bot)
 BOT_TOKEN = "8843244865:AAGS47kvrD-ZeOTr-EgxSYFoYY-Cg3SJk-A"
 ADMIN_ID = 1780858471  
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s', level=logging.INFO)
-
-# FastAPI सेटअप जो Render को 24/7 लाइव रखेगा
-api_app = FastAPI()
-
-@api_app.get("/")
-def read_root():
-    return {"status": "VIP 23-Bots Engine is Online 24/7"}
 
 # सभी 23 बॉट्स की बिल्कुल सटीक लिस्ट
 HELPER_BOTS = [
@@ -48,6 +41,33 @@ HELPER_BOTS = [
     {"token": "8963701519:AAHJ5GfL6yavqWuTr9ixGxdMc6V1JSiqSbI", "username": "FastReact23_bot"}
 ]
 
+# टकराव रोकने के लिए लाइफस्पैन इंजन (FastAPI + TG Bot Router)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    bot_app = Application.builder().token(BOT_TOKEN).build()
+    bot_app.add_handler(CommandHandler("start", start))
+    bot_app.add_handler(CommandHandler("gen_user", gen_user))
+    bot_app.add_handler(CommandHandler("login", login))
+    bot_app.add_handler(CommandHandler("setup", setup_group))
+    bot_app.add_handler(CommandHandler("all_users", all_users))
+    bot_app.add_handler(CommandHandler("my_plan", my_plan))
+    bot_app.add_handler(CommandHandler("help", help_command))
+    bot_app.add_handler(MessageHandler(filters.ChatType.GROUPS & ~filters.COMMAND, auto_react))
+    
+    await bot_app.initialize()
+    await bot_app.start()
+    asyncio.create_task(bot_app.updater.start_polling())
+    logging.info("🚀 Telegram Bot Starter Pack Activated inside Lifespan!")
+    yield
+    await bot_app.updater.stop()
+    await bot_app.stop()
+
+api_app = FastAPI(lifespan=lifespan)
+
+@api_app.get("/")
+def read_root():
+    return {"status": "VIP 23-Bots Engine Running Successfully"}
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == "private":
         await update.message.reply_text(
@@ -56,8 +76,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "`/login [Access_ID] [Password]`\n\n"
             "💡 कमांड्स की पूरी जानकारी के लिए `/help` टाइप करें।"
         )
-
-async def gen_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        async def gen_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
     try:
@@ -71,7 +90,8 @@ async def gen_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ क्रेडेंशियल सेट करने में कोई त्रुटि हुई।")
     except IndexError:
         await update.message.reply_text("❌ सही तरीका: `/gen_user [ID] [Password] [Days]`")
-        async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != "private":
         return
     try:
@@ -81,9 +101,16 @@ async def gen_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['password'] = password
         
         keyboard = []
+        row = []
         for i, bot in enumerate(HELPER_BOTS, start=1):
             link = f"https://t.me{bot['username']}?startgroup=true"
-            keyboard.append([InlineKeyboardButton(text=f"➕ ऐड करें बॉट {i} 🚀", url=link)])
+            row.append(InlineKeyboardButton(text=f"➕ बॉट {i}", url=link))
+            if len(row) == 2:  # एक लाइन में 2 बटन दिखेंगे ताकि मोबाइल स्क्रीन पर सुंदर लगे
+                keyboard.append(row)
+                row = []
+        if row:
+            keyboard.append(row)
+            
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(
             "🔑 *क्रेडेंशियल दर्ज कर लिए गए हैं!*\n\n"
@@ -147,7 +174,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(admin_help, parse_mode="Markdown")
     else:
         user_help = (
-            "⚙️ *ग्राहक (User) कमांड्स:*\n\n🔹 `/start` ➔ बॉट की बेसिक जानकारी।\n🔹 `/login [ID] [Pass]` ➔ 23 बॉट्स के बटन पाने के लिए।\n🔹 `/setup` ➔ ग्रुप के अंदर भेजें।\n🔹 `/my_plan` ➔ प्लान की वैधता देखने के लिए।\n🔹 `/help` ➔ गाइड।"
+            "⚙️ *ग्राहक (User) कमांड्स:*\n\n🔹 `/start` ➔ बेसिक जानकारी।\n🔹 `/login [ID] [Pass]` ➔ 23 बॉट्स के बटन पाने के लिए।\n🔹 `/setup` ➔ ग्रुप के अंदर भेजें।\n🔹 `/my_plan` ➔ प्लान की वैधता देखने के लिए।\n🔹 `/help` ➔ गाइड।"
         )
         await update.message.reply_text(user_help, parse_mode="Markdown")
 
@@ -170,25 +197,6 @@ async def auto_react(update: Update, context: ContextTypes.DEFAULT_TYPE):
             tasks = [send_reaction_async(client, bot["token"], group_id, message_id, random.choice(premium_reactions)) for bot in HELPER_BOTS]
             await asyncio.gather(*tasks)
 
-async def run_bot_and_server():
-    app = Application.builder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("gen_user", gen_user))
-    app.add_handler(CommandHandler("login", login))
-    app.add_handler(CommandHandler("setup", setup_group))
-    app.add_handler(CommandHandler("all_users", all_users))
-    app.add_handler(CommandHandler("my_plan", my_plan))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(MessageHandler(filters.ChatType.GROUPS & ~filters.COMMAND, auto_react))
-    
-    await app.initialize()
-    await app.start()
-    
-    config = uvicorn.Config(app=api_app, host="0.0.0.0", port=10000, log_level="info")
-    server = uvicorn.Server(config)
-    asyncio.create_task(app.updater.start_polling())
-    await server.serve()
-
 if __name__ == '__main__':
-    asyncio.run(run_bot_and_server())
+    uvicorn.run("bot:api_app", host="0.0.0.0", port=10000)
     
