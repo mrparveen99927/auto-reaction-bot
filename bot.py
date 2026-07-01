@@ -2,8 +2,8 @@ import logging
 import random
 import asyncio
 import httpx
-from http.server import BaseHTTPRequestHandler, HTTPServer
-import threading
+import uvicorn
+from fastapi import FastAPI
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from database import generate_user_credentials, login_and_lock_group, is_group_allowed, get_all_active_users
@@ -13,6 +13,13 @@ BOT_TOKEN = "8843244865:AAGS47kvrD-ZeOTr-EgxSYFoYY-Cg3SJk-A"
 ADMIN_ID = 1780858471  
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s', level=logging.INFO)
+
+# FastAPI सेटअप जो Render को 100% सक्सेसफुल बनाएगा
+api_app = FastAPI()
+
+@api_app.get("/")
+def read_root():
+    return {"status": "23 Bots Engine is Live 24/7"}
 
 # सभी 23 बॉट्स की बिल्कुल सटीक लिस्ट
 HELPER_BOTS = [
@@ -41,26 +48,12 @@ HELPER_BOTS = [
     {"token": "8963701519:AAHJ5GfL6yavqWuTr9ixGxdMc6V1JSiqSbI", "username": "FastReact23_bot"}
 ]
 
-class HealthCheckHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"23 Bots Engine Online")
-
-def run_health_server():
-    try:
-        server = HTTPServer(('0.0.0.0', 10000), HealthCheckHandler)
-        server.serve_forever()
-    except Exception as e:
-        print(f"Server Error: {e}")
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == "private":
         await update.message.reply_text(
             "👋 नमस्ते! इस 23× मल्टी-ऑटो-रिएक्शन वीआईपी बॉट का उपयोग करने के लिए लॉगिन करें।\n\n"
             "👉 लॉगिन करने के लिए इस तरह मैसेज भेजें:\n"
-            "`/login [Access_ID] [Password]`\n\n"
-            "💡 कमांड्स की पूरी जानकारी के लिए `/help` टाइप करें।"
+            "`/login [Access_ID] [Password]`"
         )
 
 async def gen_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -70,12 +63,9 @@ async def gen_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         access_id = context.args[0]
         password = context.args[1]
         days = int(context.args[2]) if len(context.args) > 2 else 30
-        
         success = generate_user_credentials(access_id, password, days)
         if success:
-            await update.message.reply_text(
-                f"✅ क्रेडेंशियल सफलतापूर्वक सेट हो गया है!\n\n🔑 ID: `{access_id}`\n🔒 Pass: `{password}`\n⏳ वैधता: {days} दिन"
-            )
+            await update.message.reply_text(f"✅ क्रेडेंशियल सेट हो गया है!\n\n🔑 ID: `{access_id}`\n🔒 Pass: `{password}`\n⏳ वैधता: {days} दिन")
         else:
             await update.message.reply_text("❌ क्रेडेंशियल सेट करने में कोई त्रुटि हुई।")
     except IndexError:
@@ -86,7 +76,6 @@ async def gen_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         access_id = context.args[0]
         password = context.args[1]
-        
         context.user_data['access_id'] = access_id
         context.user_data['password'] = password
         
@@ -94,15 +83,12 @@ async def gen_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for i, bot in enumerate(HELPER_BOTS, start=1):
             link = f"https://t.me{bot['username']}?startgroup=true"
             keyboard.append([InlineKeyboardButton(text=f"➕ ऐड करें बॉट {i} 🚀", url=link)])
-            
         reply_markup = InlineKeyboardMarkup(keyboard)
-        
         await update.message.reply_text(
             "🔑 *क्रेडेंशियल दर्ज कर लिए गए हैं!*\n\n"
             "🔥 अब नीचे दिए गए बटनों पर क्लिक करके सभी 23 बॉट्स को अपने ग्रुप में जोड़ें।\n\n"
             "⚠️ *महत्वपूर्ण:* सभी बॉट्स को शामिल करने के बाद, ग्रुप में जाकर यह कमांड भेजें:\n`/setup`",
-            reply_markup=reply_markup,
-            parse_mode="Markdown"
+            reply_markup=reply_markup, parse_mode="Markdown"
         )
     except IndexError:
         await update.message.reply_text("❌ सही तरीका: `/login [ID] [Password]`")
@@ -111,27 +97,17 @@ async def setup_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type not in ["group", "supergroup"]:
         await update.message.reply_text("❌ यह कमांड केवल ग्रुप के अंदर काम करेगी।")
         return
-
     access_id = context.user_data.get('access_id')
     password = context.user_data.get('password')
-
     if not access_id or not password:
         await update.message.reply_text("❌ आपने पहले बॉट के इनबॉक्स (DM) में जाकर `/login` नहीं किया है।")
         return
-
     group_id = update.effective_chat.id
     status = login_and_lock_group(access_id, password, group_id)
-    
     if status == "success":
         await update.message.reply_text("🎉 बधाई हो! यह ग्रुप लॉक हो गया है। अब यहाँ 23 गुना ऑटो-रिएक्शन ब्लास्ट काम करेगा।")
-    elif status == "invalid":
-        await update.message.reply_text("❌ गलत ID या पासवर्ड।")
-    elif status == "expired":
-        await update.message.reply_text("⏳ आपका प्लान समाप्त हो चुका है।")
-    elif status == "group_already_used":
-        await update.message.reply_text("❌ यह ग्रुप पहले से ही किसी अन्य ID से लिंक है।")
-    elif status == "wrong_group":
-        await update.message.reply_text("❌ यह ID केवल आपके पहले से लॉक किए गए ग्रुप में उपयोग हो सकती है।")
+    else:
+        await update.message.reply_text(f"❌ त्रुटि या अमान्य स्थिति: {status}")
 
 async def all_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
@@ -142,34 +118,13 @@ async def all_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     response = "📋 *एक्टिव ग्राहकों की सूची:*\n\n"
     for u in users:
-        response += (
-            f"👤 *ID:* `{u['id']}`\n🔒 *Pass:* `{u['pass']}`\n⏳ *बचा हुआ समय:* {u['time']}\n📢 *Group ID:* `{u['group']}`\n───────────────────\n"
-        )
+        response += f"👤 *ID:* `{u['id']}`\n🔒 *Pass:* `{u['pass']}`\n⏳ *समय:* {u['time']}\n📢 *Group:* `{u['group']}`\n───────────────────\n"
     await update.message.reply_text(response, parse_mode="Markdown")
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    if user_id == ADMIN_ID:
-        admin_help = (
-            "🛠️ *मालिक (Admin) कमांड्स:*\n\n🔹 `/gen_user [ID] [Pass] [Days]` ➔ ग्राहक बनाने/रिन्यू करने के लिए।\n🔹 `/all_users` ➔ एक्टिव ग्राहकों की लिस्ट।\n🔹 `/help` ➔ गाइड।"
-        )
-        await update.message.reply_text(admin_help, parse_mode="Markdown")
-    else:
-        user_help = (
-            "⚙️ *ग्राहक (User) कमांड्स:*\n\n🔹 `/start` ➔ बेसिक जानकारी।\n🔹 `/login [ID] [Pass]` ➔ 23 बॉट्स के बटन पाने के लिए।\n🔹 `/setup` ➔ ग्रुप के अंदर भेजें ताकि ग्रुप लॉक हो सके।\n🔹 `/help` ➔ गाइड।"
-        )
-        await update.message.reply_text(user_help, parse_mode="Markdown")
-
-# पूरी तरह Async रिएक्शन लॉजिक (बिना एरर वाला नया कोड)
 async def send_reaction_async(client, token, chat_id, message_id, reaction):
     try:
-        url = f"https://api.telegram.org/bot{token}/setMessageReaction"
-        data = {
-            "chat_id": chat_id,
-            "message_id": message_id,
-            "reaction": [{"type": "emoji", "emoji": reaction}],
-            "is_big": True
-        }
+        url = f"https://telegram.org{token}/setMessageReaction"
+        data = {"chat_id": chat_id, "message_id": message_id, "reaction": [{"type": "emoji", "emoji": reaction}], "is_big": True}
         await client.post(url, json=data, timeout=5)
     except Exception:
         pass
@@ -179,31 +134,32 @@ async def auto_react(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     group_id = update.effective_chat.id
     message_id = update.message.message_id
-    
     if is_group_allowed(group_id):
         premium_reactions = ["👍", "❤️", "🔥", "🎉", "🤩", "🚀", "🥰", "👏", "⚡", "😎"]
-        
-        # बिना थ्रेडिंग के सभी 23 बॉट्स को समानांतर (Parallel) फायर करने का सुरक्षित तरीका
         async with httpx.AsyncClient() as client:
-            tasks = []
-            for bot in HELPER_BOTS:
-                chosen_reaction = random.choice(premium_reactions)
-                tasks.append(send_reaction_async(client, bot["token"], group_id, message_id, chosen_reaction))
+            tasks = [send_reaction_async(client, bot["token"], group_id, message_id, random.choice(premium_reactions)) for bot in HELPER_BOTS]
             await asyncio.gather(*tasks)
 
-def main():
-    threading.Thread(target=run_health_server, daemon=True).start()
+# मुख्य रनर फंक्शन जो रेंडर पर टेलीग्राम और वेब सर्वर दोनों को एक साथ चलाएगा
+async def run_bot_and_server():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("gen_user", gen_user))
     app.add_handler(CommandHandler("login", login))
     app.add_handler(CommandHandler("setup", setup_group))
     app.add_handler(CommandHandler("all_users", all_users))
-    app.add_handler(CommandHandler("help", help_command))
     app.add_handler(MessageHandler(filters.ChatType.GROUPS & ~filters.COMMAND, auto_react))
-    print("🚀 23-Bots Engine Started...")
-    app.run_polling()
+    
+    await app.initialize()
+    await app.start()
+    
+    # FastAPI वेब सर्वर और टेलीग्राम बॉट पोलिंग दोनों को एक साथ असाइन करना
+    config = uvicorn.Config(app=api_app, host="0.0.0.0", port=10000, log_level="info")
+    server = uvicorn.Server(config)
+    
+    asyncio.create_task(app.updater.start_polling())
+    await server.serve()
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(run_bot_and_server())
     
