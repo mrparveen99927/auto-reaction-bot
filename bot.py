@@ -14,12 +14,12 @@ ADMIN_ID = 1780858471
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s', level=logging.INFO)
 
-# FastAPI सेटअप जो Render को 100% सक्सेसफुल बनाएगा
+# FastAPI सेटअप जो Render को 24/7 लाइव रखेगा
 api_app = FastAPI()
 
 @api_app.get("/")
 def read_root():
-    return {"status": "23 Bots Engine is Live 24/7"}
+    return {"status": "VIP 23-Bots Engine is Online 24/7"}
 
 # सभी 23 बॉट्स की बिल्कुल सटीक लिस्ट
 HELPER_BOTS = [
@@ -51,7 +51,10 @@ HELPER_BOTS = [
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == "private":
         await update.message.reply_text(
-            "👋 नमस्ते! इस 23× मल्टी-ऑटो-रिएक्शन वीआईपी बॉट का उपयोग करने के लिए लॉगिन करें।\n\n👉 लॉगिन करने के लिए इस तरह मैसेज भेजें:\n`/login [Access_ID] [Password]`"
+            "👋 नमस्ते! इस 23× मल्टी-ऑटो-रिएक्शन वीआईपी बॉट का उपयोग करने के लिए लॉगिन करें।\n\n"
+            "👉 लॉगिन करने के लिए इस तरह मैसेज भेजें:\n"
+            "`/login [Access_ID] [Password]`\n\n"
+            "💡 कमांड्स की पूरी जानकारी के लिए `/help` टाइप करें।"
         )
 
 async def gen_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -68,8 +71,7 @@ async def gen_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ क्रेडेंशियल सेट करने में कोई त्रुटि हुई।")
     except IndexError:
         await update.message.reply_text("❌ सही तरीका: `/gen_user [ID] [Password] [Days]`")
-
-async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != "private":
         return
     try:
@@ -120,6 +122,35 @@ async def all_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
         response += f"👤 *ID:* `{u['id']}`\n🔒 *Pass:* `{u['pass']}`\n⏳ *समय:* {u['time']}\n📢 *Group:* `{u['group']}`\n───────────────────\n"
     await update.message.reply_text(response, parse_mode="Markdown")
 
+async def my_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    users = get_all_active_users()
+    access_id = context.user_data.get('access_id', "Guest")
+    found_user = None
+    for u in users:
+        if u['id'] == access_id:
+            found_user = u
+            break
+    if found_user:
+        await update.message.reply_text(
+            f"📊 *आपके वीआईपी प्लान की जानकारी:*\n\n👤 *Access ID:* `{found_user['id']}`\n⏳ *बचा हुआ समय:* {found_user['time']}\n📢 *ग्रुप आईडी:* `{found_user['group']}`",
+            parse_mode="Markdown"
+        )
+    else:
+        await update.message.reply_text("❌ कोई एक्टिव प्लान नहीं मिला। पहले `/login` करें।")
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id == ADMIN_ID:
+        admin_help = (
+            "🛠️ *मालिक (Admin) कमांड्स:*\n\n🔹 `/gen_user [ID] [Pass] [Days]` ➔ ग्राहक बनाने/रिन्यू करने के लिए।\n🔹 `/all_users` ➔ एक्टिव ग्राहकों की सूची।\n🔹 `/help` ➔ गाइड।"
+        )
+        await update.message.reply_text(admin_help, parse_mode="Markdown")
+    else:
+        user_help = (
+            "⚙️ *ग्राहक (User) कमांड्स:*\n\n🔹 `/start` ➔ बॉट की बेसिक जानकारी।\n🔹 `/login [ID] [Pass]` ➔ 23 बॉट्स के बटन पाने के लिए।\n🔹 `/setup` ➔ ग्रुप के अंदर भेजें।\n🔹 `/my_plan` ➔ प्लान की वैधता देखने के लिए।\n🔹 `/help` ➔ गाइड।"
+        )
+        await update.message.reply_text(user_help, parse_mode="Markdown")
+
 async def send_reaction_async(client, token, chat_id, message_id, reaction):
     try:
         url = f"https://telegram.org{token}/setMessageReaction"
@@ -146,6 +177,8 @@ async def run_bot_and_server():
     app.add_handler(CommandHandler("login", login))
     app.add_handler(CommandHandler("setup", setup_group))
     app.add_handler(CommandHandler("all_users", all_users))
+    app.add_handler(CommandHandler("my_plan", my_plan))
+    app.add_handler(CommandHandler("help", help_command))
     app.add_handler(MessageHandler(filters.ChatType.GROUPS & ~filters.COMMAND, auto_react))
     
     await app.initialize()
@@ -153,7 +186,6 @@ async def run_bot_and_server():
     
     config = uvicorn.Config(app=api_app, host="0.0.0.0", port=10000, log_level="info")
     server = uvicorn.Server(config)
-    
     asyncio.create_task(app.updater.start_polling())
     await server.serve()
 
