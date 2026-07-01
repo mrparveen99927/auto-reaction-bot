@@ -13,7 +13,7 @@ ADMIN_ID = 1780858471
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s', level=logging.INFO)
 
-# सभी 23 बॉट्स के टोकन और उनके यूजरनेम्स की लिस्ट (पूरी सेना)
+# सभी 23 बॉट्स की बिल्कुल सटीक लिस्ट (यूज़रनेम्स पूरी तरह ठीक हैं)
 HELPER_BOTS = [
     {"token": "7759702480:AAF9Wts-mQJwo-kABbLH-07efM8oKicdhcM", "username": "FastReact1_bot"},
     {"token": "8868273049:AAGbuicV1ytedATSges9dzVeOoBrKbpVfkw", "username": "FastReact2_bot"},
@@ -40,12 +40,11 @@ HELPER_BOTS = [
     {"token": "8963701519:AAHJ5GfL6yavqWuTr9ixGxdMc6V1JSiqSbI", "username": "FastReact23_bot"}
 ]
 
-# Render Free Plan पर ज़िंदा रखने के लिए वेब सर्वर
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"23 Bots Multi-Reaction Engine is Online!")
+        self.wfile.write(b"23 Bots Engine Online")
 
 def run_health_server():
     try:
@@ -62,7 +61,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "`/login [Access_ID] [Password]`\n\n"
             "💡 कमांड्स की पूरी जानकारी के लिए `/help` टाइप करें।"
         )
-        async def gen_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def gen_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
     try:
@@ -73,17 +73,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         success = generate_user_credentials(access_id, password, days)
         if success:
             await update.message.reply_text(
-                f"✅ ग्राहक क्रेडेंशियल सफलतापूर्वक सेट हो गया है!\n\n"
-                f"🔑 ID: `{access_id}`\n"
-                f"🔒 Pass: `{password}`\n"
-                f"⏳ वैधता: {days} दिन"
+                f"✅ क्रेडेंशियल सफलतापूर्वक सेट हो गया है!\n\n🔑 ID: `{access_id}`\n🔒 Pass: `{password}`\n⏳ वैधता: {days} दिन"
             )
         else:
             await update.message.reply_text("❌ क्रेडेंशियल सेट करने में कोई त्रुटि हुई।")
     except IndexError:
         await update.message.reply_text("❌ सही तरीका: `/gen_user [ID] [Password] [Days]`")
-
-async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != "private":
         return
     try:
@@ -93,7 +89,6 @@ async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['access_id'] = access_id
         context.user_data['password'] = password
         
-        # ग्राहकों के लिए 1-क्लिक बटनों का ऑटोमैटिक जनरेशन
         keyboard = []
         for i, bot in enumerate(HELPER_BOTS, start=1):
             link = f"https://t.me{bot['username']}?startgroup=true"
@@ -103,9 +98,8 @@ async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         await update.message.reply_text(
             "🔑 *क्रेडेंशियल दर्ज कर लिए गए हैं!*\n\n"
-            "🔥 अब नीचे दिए गए बटनों पर एक-एक करके क्लिक करें और सभी 23 बॉट्स को अपने ग्रुप में जोड़ें। (यह बहुत तेज़ और आसान है!)\n\n"
-            "⚠️ *महत्वपूर्ण:* सभी बॉट्स को ग्रुप में शामिल करने के बाद, अपने ग्रुप चैट में जाकर यह कमांड भेजें:\n"
-            "`/setup`",
+            "🔥 अब नीचे दिए गए बटनों पर क्लिक करके सभी 23 बॉट्स को अपने ग्रुप में जोड़ें।\n\n"
+            "⚠️ *महत्वपूर्ण:* सभी बॉट्स को शामिल करने के बाद, ग्रुप में जाकर यह कमांड भेजें:\n`/setup`",
             reply_markup=reply_markup,
             parse_mode="Markdown"
         )
@@ -128,16 +122,17 @@ async def setup_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status = login_and_lock_group(access_id, password, group_id)
     
     if status == "success":
-        await update.message.reply_text("🎉 बधाई हो! यह ग्रुप इस वीआईपी आईडी के साथ हमेशा के लिए लॉक हो गया है। अब यहाँ 23 गुना ऑटो-रिएक्शन ब्लास्ट काम करेगा।")
+        await update.message.reply_text("🎉 बधाई हो! यह ग्रुप लॉक हो गया है। अब यहाँ 23 गुना ऑटो-रिएक्शन ब्लास्ट काम करेगा।")
     elif status == "invalid":
         await update.message.reply_text("❌ गलत ID या पासवर्ड।")
     elif status == "expired":
         await update.message.reply_text("⏳ आपका प्लान समाप्त हो चुका है।")
     elif status == "group_already_used":
-        await update.message.reply_text("❌ यह ग्रुप पहले से ही किसी अन्य ID के साथ लिंक है।")
+        await update.message.reply_text("❌ यह ग्रुप पहले से ही किसी अन्य ID से लिंक है।")
     elif status == "wrong_group":
-        await update.message.reply_text("❌ यह ID केवल आपके पहले से लॉक किए गए ग्रुप में ही उपयोग की जा सकती है।")
-        async def all_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        await update.message.reply_text("❌ यह ID केवल आपके पहले से लॉक किए गए ग्रुप में उपयोग हो सकती है।")
+
+async def all_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
     users = get_all_active_users()
@@ -147,11 +142,7 @@ async def setup_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     response = "📋 *एक्टिव ग्राहकों की सूची:*\n\n"
     for u in users:
         response += (
-            f"👤 *ID:* `{u['id']}`\n"
-            f"🔒 *Pass:* `{u['pass']}`\n"
-            f"⏳ *बचा हुआ समय:* {u['time']}\n"
-            f"📢 *Group ID:* `{u['group']}`\n"
-            f"───────────────────\n"
+            f"👤 *ID:* `{u['id']}`\n🔒 *Pass:* `{u['pass']}`\n⏳ *बचा हुआ समय:* {u['time']}\n📢 *Group ID:* `{u['group']}`\n───────────────────\n"
         )
     await update.message.reply_text(response, parse_mode="Markdown")
 
@@ -159,23 +150,15 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id == ADMIN_ID:
         admin_help = (
-            "🛠️ *मालिक (Admin) कमांड्स की सूची:*\n\n"
-            "🔹 `/gen_user [ID] [Pass] [Days]` ➔ ग्राहक बनाने/रिन्यू करने के लिए।\n"
-            "?? `/all_users` ➔ एक्टिव ग्राहकों और उनके बचे हुए दिनों की लिस्ट।\n"
-            "🔹 `/help` ➔ गाइड देखने के लिए।"
+            "🛠️ *मालिक (Admin) कमांड्स:*\n\n🔹 `/gen_user [ID] [Pass] [Days]` ➔ ग्राहक बनाने/रिन्यू करने के लिए।\n🔹 `/all_users` ➔ एक्टिव ग्राहकों की लिस्ट।\n🔹 `/help` ➔ गाइड।"
         )
         await update.message.reply_text(admin_help, parse_mode="Markdown")
     else:
         user_help = (
-            "⚙️ *ग्राहक (User) कमांड्स की सूची:*\n\n"
-            "🔹 `/start` ➔ बॉट की बेसिक जानकारी के लिए।\n"
-            "🔹 `/login [ID] [Pass]` ➔ इनबॉक्स में लॉगिन करके 23 बॉट्स के बटन पाने के लिए।\n"
-            "🔹 `/setup` ➔ ग्रुप के अंदर भेजें ताकि ग्रुप लॉक हो सके।\n"
-            "🔹 `/help` ➔ कमांड्स की जानकारी के लिए।"
+            "⚙️ *ग्राहक (User) कमांड्स:*\n\n🔹 `/start` ➔ बेसिक जानकारी।\n🔹 `/login [ID] [Pass]` ➔ 23 बॉट्स के बटन पाने के लिए।\n🔹 `/setup` ➔ ग्रुप के अंदर भेजें ताकि ग्रुप लॉक हो सके।\n🔹 `/help` ➔ गाइड।"
         )
         await update.message.reply_text(user_help, parse_mode="Markdown")
 
-# 23 बॉट्स का एक साथ रिएक्शन ब्लास्ट भेजने के लिए थ्रेड फंक्शन (फास्ट स्पीड के लिए)
 def send_reaction_sync(token, chat_id, message_id, reaction):
     try:
         url = f"https://telegram.org{token}/setMessageReaction"
@@ -189,40 +172,30 @@ def send_reaction_sync(token, chat_id, message_id, reaction):
     except Exception:
         pass
 
-# मुख्य ऑटो-रिएक्शन लॉजिक
 async def auto_react(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
-        
     group_id = update.effective_chat.id
     message_id = update.message.message_id
     
     if is_group_allowed(group_id):
         premium_reactions = ["👍", "❤️", "🔥", "🎉", "🤩", "🚀", "🥰", "👏", "⚡", "😎"]
-        
         for bot in HELPER_BOTS:
             chosen_reaction = random.choice(premium_reactions)
-            t = threading.Thread(
-                target=send_reaction_sync, 
-                args=(bot["token"], group_id, message_id, chosen_reaction)
-            )
+            t = threading.Thread(target=send_reaction_sync, args=(bot["token"], group_id, message_id, chosen_reaction))
             t.start()
 
 def main():
     threading.Thread(target=run_health_server, daemon=True).start()
-
     app = Application.builder().token(BOT_TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("gen_user", gen_user))
     app.add_handler(CommandHandler("login", login))
     app.add_handler(CommandHandler("setup", setup_group))
     app.add_handler(CommandHandler("all_users", all_users))
     app.add_handler(CommandHandler("help", help_command))
-    
     app.add_handler(MessageHandler(filters.ChatType.GROUPS & ~filters.COMMAND, auto_react))
-
-    print("🚀 23-Bots Multi-Engine चालू हो रहा है...")
+    print("🚀 23-Bots Engine Started...")
     app.run_polling()
 
 if __name__ == '__main__':
