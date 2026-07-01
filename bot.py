@@ -51,9 +51,7 @@ HELPER_BOTS = [
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type == "private":
         await update.message.reply_text(
-            "👋 नमस्ते! इस 23× मल्टी-ऑटो-रिएक्शन वीआईपी बॉट का उपयोग करने के लिए लॉगिन करें।\n\n"
-            "👉 लॉगिन करने के लिए इस तरह मैसेज भेजें:\n"
-            "`/login [Access_ID] [Password]`"
+            "👋 नमस्ते! इस 23× मल्टी-ऑटो-रिएक्शन वीआईपी बॉट का उपयोग करने के लिए लॉगिन करें।\n\n👉 लॉगिन करने के लिए इस तरह मैसेज भेजें:\n`/login [Access_ID] [Password]`"
         )
 
 async def gen_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -70,7 +68,8 @@ async def gen_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ क्रेडेंशियल सेट करने में कोई त्रुटि हुई।")
     except IndexError:
         await update.message.reply_text("❌ सही तरीका: `/gen_user [ID] [Password] [Days]`")
-        async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != "private":
         return
     try:
@@ -140,7 +139,6 @@ async def auto_react(update: Update, context: ContextTypes.DEFAULT_TYPE):
             tasks = [send_reaction_async(client, bot["token"], group_id, message_id, random.choice(premium_reactions)) for bot in HELPER_BOTS]
             await asyncio.gather(*tasks)
 
-# मुख्य रनर फंक्शन जो रेंडर पर टेलीग्राम और वेब सर्वर दोनों को एक साथ चलाएगा
 async def run_bot_and_server():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -153,7 +151,6 @@ async def run_bot_and_server():
     await app.initialize()
     await app.start()
     
-    # FastAPI वेब सर्वर और टेलीग्राम बॉट पोलिंग दोनों को एक साथ असाइन करना
     config = uvicorn.Config(app=api_app, host="0.0.0.0", port=10000, log_level="info")
     server = uvicorn.Server(config)
     
