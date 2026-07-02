@@ -1,33 +1,37 @@
+# database.py
 import sqlite3
 from datetime import datetime, timedelta
+from config import DB_NAME
 
 def init_db():
-    conn = sqlite3.connect("bot_users.db")
+    """डेटाबेस और टेबल बनाने के लिए"""
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            access_id TEXT PRIMARY KEY,
-            password TEXT,
-            group_id INTEGER UNIQUE,
-            expiry_date TEXT,
-            status TEXT DEFAULT 'active'
-        )
+    CREATE TABLE IF NOT EXISTS users (
+        access_id TEXT PRIMARY KEY,
+        password TEXT,
+        group_id INTEGER UNIQUE,
+        expiry_date TEXT,
+        status TEXT DEFAULT 'active'
+    )
     ''')
     conn.commit()
     conn.close()
 
 def generate_user_credentials(access_id, password, days=30):
-    conn = sqlite3.connect("bot_users.db")
+    """नया वीआईपी लाइसेंस कोड जनरेट करने के लिए"""
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     expiry = (datetime.now() + timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
     try:
         cursor.execute('''
-            INSERT INTO users (access_id, password, expiry_date, status) 
-            VALUES (?, ?, ?, 'active')
-            ON CONFLICT(access_id) DO UPDATE SET 
-            password=excluded.password, 
-            expiry_date=excluded.expiry_date,
-            status='active'
+        INSERT INTO users (access_id, password, expiry_date, status)
+        VALUES (?, ?, ?, 'active')
+        ON CONFLICT(access_id) DO UPDATE SET
+        password=excluded.password,
+        expiry_date=excluded.expiry_date,
+        status='active'
         ''', (access_id, password, expiry))
         conn.commit()
         success = True
@@ -37,7 +41,8 @@ def generate_user_credentials(access_id, password, days=30):
     return success
 
 def login_and_lock_group(access_id, password, group_id):
-    conn = sqlite3.connect("bot_users.db")
+    """यूजर के ग्रुप को बोट के साथ लॉक करने के लिए"""
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute(
         "SELECT expiry_date, group_id FROM users WHERE access_id = ? AND password = ? AND status = 'active'",
@@ -47,10 +52,12 @@ def login_and_lock_group(access_id, password, group_id):
     if not result:
         conn.close()
         return "invalid"
+    
     expiry_date, locked_group = result
     if datetime.now() > datetime.strptime(expiry_date, '%Y-%m-%d %H:%M:%S'):
         conn.close()
         return "expired"
+    
     if locked_group is None:
         try:
             cursor.execute("UPDATE users SET group_id = ? WHERE access_id = ?", (group_id, access_id))
@@ -68,39 +75,14 @@ def login_and_lock_group(access_id, password, group_id):
         return "wrong_group"
 
 def is_group_allowed(group_id):
-    conn = sqlite3.connect("bot_users.db")
+    """चेक करना कि इस ग्रुप का लाइसेंस एक्टिव है या नहीं"""
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("SELECT expiry_date FROM users WHERE group_id = ? AND status = 'active'", (group_id,))
     result = cursor.fetchone()
     conn.close()
     if result:
-        if datetime.now() < datetime.strptime(result, '%Y-%m-%d %H:%M:%S'):
+        if datetime.now() < datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S'):
             return True
     return False
-
-def get_all_active_users():
-    conn = sqlite3.connect("bot_users.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT access_id, password, expiry_date, group_id FROM users WHERE status = 'active'")
-    rows = cursor.fetchall()
-    conn.close()
     
-    user_list = []
-    for row in rows:
-        access_id, password, expiry_date, group_id = row
-        expiry = datetime.strptime(expiry_date, '%Y-%m-%d %H:%M:%S')
-        remaining = expiry - datetime.now()
-        
-        if remaining.total_seconds() > 0:
-            days = remaining.days
-            hours = remaining.seconds // 3600
-            time_left = f"{days} दिन, {hours} घंटे"
-            user_list.append({
-                "id": access_id,
-                "pass": password,
-                "time": time_left,
-                "group": group_id if group_id else "लिंक नहीं है"
-            })
-    return user_list
-
-init_db()
