@@ -19,12 +19,14 @@ async def login(update: Update, context):
     if update.effective_chat.type != "private":
         return
     try:
-        if not context.args or len(context.args) < 2:
+        # सीधे मैसेज टेक्स्ट को स्पेस से काटना (नो ब्रैकेट एरर)
+        text_parts = update.message.text.split()
+        if len(text_parts) < 3:
             await update.message.reply_text("❌ Use format: `/login [Access_ID] [Password]`")
             return
             
-        access_id = str(context.args).strip()
-        password = str(context.args).strip()
+        access_id = str(text_parts[1]).strip()
+        password = str(text_parts[2]).strip()
         
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
@@ -44,7 +46,6 @@ async def login(update: Update, context):
         context.user_data['temp_access_id'] = access_id
         context.user_data['temp_password'] = password
         
-        # 100% वर्किंग 'टच-टू-कॉपी' टेक्स्ट लिस्ट लॉजिक
         msg = f"🎉 *Login Successful!*\n\n"
         msg += f"🔑 VIP ID: `{access_id}`\n"
         msg += f"⏳ Expires On: `{expiry_date}`\n\n"
@@ -54,14 +55,12 @@ async def login(update: Update, context):
         for i in range(1, 24):
             bot_username = f"FastReact{i}_bot"
             if i == 20:
-                bot_username = "FastReact21_bot"  # गैप फिक्स
-            
-            # ` ` लगाने से यह टेक्स्ट मोनो-स्पेस बन जाता है, जिसपर क्लिक करते ही सीधे कॉपी हो जाता है
+                bot_username = "FastReact21_bot"
             msg += f"{i}️⃣ `{bot_username}`\n"
             
         msg += f"\n⚙️ *How to Add:*\n"
         msg += f"1️⃣ ऊपर की लिस्ट से एक-एक करके यूजरनेम पर क्लिक करके कॉपी करें।\n"
-        msg += f"2️⃣ अपने ग्रुप में जाकर उन्हें मेंबर की तरह जोड़ें और **Admin** बना दें।\n\n"
+        msg += f"2️⃣ अपने群 में जाकर उन्हें मेंबर की तरह जोड़ें और **Admin** बना दें।\n\n"
         msg += f"⚠️ *Important:* सभी बॉट्स को शामिल करने के बाद ग्रुप में जाकर टाइप करें: `/setup`"
         
         await update.message.reply_text(msg, parse_mode="Markdown")

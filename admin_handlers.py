@@ -8,17 +8,15 @@ async def gen_key(update: Update, context):
     if update.effective_user.id != ADMIN_ID:
         return
     try:
-        # यहाँ आर्ग्युमेंट्स को बिना ब्रैकेट के बिल्कुल साफ़ स्ट्रिंग में निकाला गया है
-        if not context.args or len(context.args) < 2:
+        # सीधे मैसेज टेक्स्ट को स्पेस से काटना (नो ब्रैकेट एरर)
+        text_parts = update.message.text.split()
+        if len(text_parts) < 3:
             await update.message.reply_text("❌ Format: `/gen [ID] [Password] [Days]`")
             return
             
-        # [0] और [1] का इस्तेमाल करके सीधे असली शब्दों को निकाला गया है
-        new_id = str(context.args[0]).strip()
-        new_pass = str(context.args[1]).strip()
-        
-        # दिनों की संख्या को नंबर में बदलना
-        days = int(context.args[2]) if len(context.args) > 2 else 30
+        new_id = str(text_parts[1]).strip()
+        new_pass = str(text_parts[2]).strip()
+        days = int(text_parts[3]) if len(text_parts) > 3 else 30
         
         if generate_user_credentials(new_id, new_pass, days):
             await update.message.reply_text(f"✅ *VIP License Created:*\n\n🔑 ID: `{new_id}`\n🔒 Pass: `{new_pass}`\n⏳ Validity: `{days} Days`")
@@ -31,10 +29,11 @@ async def rem_key(update: Update, context):
     if update.effective_user.id != ADMIN_ID:
         return
     try:
-        if not context.args:
+        text_parts = update.message.text.split()
+        if len(text_parts) < 2:
             await update.message.reply_text("❌ Format: `/remkey [Access_ID]`")
             return
-        target_id = str(context.args[0]).strip()
+        target_id = str(text_parts[1]).strip()
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
         cursor.execute("DELETE FROM users WHERE access_id = ?", (target_id,))
@@ -86,9 +85,6 @@ async def users_list(update: Update, context):
 
 async def broadcast(update: Update, context):
     if update.effective_user.id != ADMIN_ID:
-        return
-    if not context.args:
-        await update.message.reply_text("❌ Format: `/broadcast [Your message here]`")
         return
     await update.message.reply_text("📢 *Global Broadcast finished successfully.*")
     
