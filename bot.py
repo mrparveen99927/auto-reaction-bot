@@ -43,7 +43,7 @@ bot_app = Application.builder().token(BOT_TOKEN).build()
 
 @api_app.get("/")
 def read_root():
-    return {"status": "VIP 21.3 Clean English Engine Online"}
+    return {"status": "VIP Clean Engine Button-Fix Online"}
 
 @api_app.post("/telegram")
 async def telegram_webhook(request: Request):
@@ -66,7 +66,6 @@ async def login(update: Update, context):
     if update.effective_chat.type != "private":
         return
     try:
-        # Arguments parsed properly using split to avoid encoding bugs
         args = update.message.text.split()
         if len(args) < 3:
             await update.message.reply_text(" Use format: `/login [Access_ID] [Password]`")
@@ -80,21 +79,35 @@ async def login(update: Update, context):
         
         keyboard = []
         row = []
-        for i, bot in enumerate(HELPER_BOTS, start=1):
-            link = f"https://t.me{bot['username']}?startgroup=true"
-            row.append(InlineKeyboardButton(text=f" Bot {i}", url=link))
+        bot_count = 1
+        
+        for bot in HELPER_BOTS:
+            username = bot.get("username", "").strip()
+            #          
+            if not username or username.lower() == "bot" or "?" in username:
+                continue
+                
+            link = f"https://t.me{username}?startgroup=true"
+            row.append(InlineKeyboardButton(text=f" Bot {bot_count}", url=link))
+            bot_count += 1
+            
             if len(row) == 2:
                 keyboard.append(row)
                 row = []
+                
         if row:
             keyboard.append(row)
+            
+        if not keyboard:
+            await update.message.reply_text(" Error: No valid helper bots found in config list.")
+            return
         
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(
             f" *Login Credentials Cached!*\n\n"
             f" ID: `{access_id}`\n"
-            f" Now click the buttons below to ADD all 23 bots to your group.\n\n"
-            f" *Important:* After adding all bots as Admin, go to your group and type:\n`/setup`",
+            f" Now click the buttons below to ADD active bots to your group.\n\n"
+            f" *Important:* After adding bots as Admin, go to your group and type:\n`/setup`",
             reply_markup=reply_markup, parse_mode="Markdown"
         )
     except Exception as e:
@@ -122,7 +135,7 @@ async def setup_group(update: Update, context):
     status = login_and_lock_group(access_id, password, update.effective_chat.id)
     
     if status == "success":
-        await update.message.reply_text(" Congratulations! Your group is now LOCKED & VERIFIED. 23x Reaction Blast is active!")
+        await update.message.reply_text(" Congratulations! Your group is now LOCKED & VERIFIED. Reaction Blast is active!")
     elif status == "group_already_used":
         await update.message.reply_text(" This group is already locked with another license.")
     elif status == "wrong_group":
@@ -136,7 +149,7 @@ async def help_command(update: Update, context):
     help_text = (
         " *Available Commands:*\n\n"
         " `/start`  Start the bot\n"
-        " `/login [ID] [Password]`  Login and get 23 buttons\n"
+        " `/login [ID] [Password]`  Login and get buttons\n"
         " `/setup`  Run inside group to lock and start reactions."
     )
     await update.message.reply_text(help_text, parse_mode="Markdown")
