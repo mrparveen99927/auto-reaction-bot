@@ -1,7 +1,7 @@
 # user_handlers.py
 import sqlite3
 from datetime import datetime
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update
 from config import ADMIN_ID, DB_NAME
 from database import generate_user_credentials, login_and_lock_group, is_group_allowed
 
@@ -23,8 +23,8 @@ async def login(update: Update, context):
             await update.message.reply_text("❌ Use format: `/login [Access_ID] [Password]`")
             return
             
-        access_id = str(context.args[0]).strip()
-        password = str(context.args[1]).strip()
+        access_id = str(context.args).strip()
+        password = str(context.args).strip()
         
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
@@ -44,40 +44,27 @@ async def login(update: Update, context):
         context.user_data['temp_access_id'] = access_id
         context.user_data['temp_password'] = password
         
-        # 100% सेफ बटन लॉजिक: बटन पर सीधे यूजरनेम दिखेगा और क्लिक करने पर ब्राउज़र नहीं खुलेगा
-        keyboard = []
-        row = []
+        # 100% वर्किंग 'टच-टू-कॉपी' टेक्स्ट लिस्ट लॉजिक
+        msg = f"🎉 *Login Successful!*\n\n"
+        msg += f"🔑 VIP ID: `{access_id}`\n"
+        msg += f"⏳ Expires On: `{expiry_date}`\n\n"
+        msg += "📋 *VIP Helper Bots List (Touch to Copy):*\n"
+        msg += "👇 _नीचे दिए गए यूजरनेम पर बस एक बार क्लिक करें, वह कॉपी हो जाएगा:_\n\n"
         
         for i in range(1, 24):
             bot_username = f"FastReact{i}_bot"
             if i == 20:
                 bot_username = "FastReact21_bot"  # गैप फिक्स
-                
-            # यहाँ url हटाकर callback_data लगाया है ताकि ब्राउज़र एरर कभी न आए
-            button_text = f"➕ @FastReact{i}_bot"
-            if i == 20:
-                button_text = f"➕ @FastReact21_bot"
-                
-            row.append(InlineKeyboardButton(text=button_text, callback_data=f"bot_{i}"))
             
-            if len(row) == 2:
-                keyboard.append(row)
-                row = []
-        if row:
-            keyboard.append(row)
+            # ` ` लगाने से यह टेक्स्ट मोनो-स्पेस बन जाता है, जिसपर क्लिक करते ही सीधे कॉपी हो जाता है
+            msg += f"{i}️⃣ `{bot_username}`\n"
+            
+        msg += f"\n⚙️ *How to Add:*\n"
+        msg += f"1️⃣ ऊपर की लिस्ट से एक-एक करके यूजरनेम पर क्लिक करके कॉपी करें।\n"
+        msg += f"2️⃣ अपने ग्रुप में जाकर उन्हें मेंबर की तरह जोड़ें और **Admin** बना दें।\n\n"
+        msg += f"⚠️ *Important:* सभी बॉट्स को शामिल करने के बाद ग्रुप में जाकर टाइप करें: `/setup`"
         
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(
-            f"🎉 *Login Successful!*\n\n"
-            f"🔑 VIP ID: `{access_id}`\n"
-            f"⏳ Expires On: `{expiry_date}`\n\n"
-            f"🔒 *How to Add Bots:*\n"
-            f"1️⃣ ऊपर बटनों में दिए गए बॉट्स के यूजरनेम को देखें।\n"
-            f"2️⃣ अपने टेलीग्राम ग्रुप की 'Add Member' सेटिंग में जाएँ।\n"
-            f"3️⃣ इन यूजरनेम्स को सर्च करके एक-एक करके ग्रुप में जोड़ें और **Admin** बना दें।\n\n"
-            f"⚠️ *Important:* सभी बॉट्स को शामिल करने के बाद ग्रुप में जाकर टाइप करें: `/setup`",
-            reply_markup=reply_markup, parse_mode="Markdown"
-        )
+        await update.message.reply_text(msg, parse_mode="Markdown")
     except Exception as e:
         await update.message.reply_text(f"❌ Login Error: {str(e)}")
 
@@ -146,7 +133,7 @@ async def help_command(update: Update, context):
     help_text = (
         "ℹ️ *Available Commands Guide:*\n\n"
         "🔹 `/start` ➡️ Activate Inbox Session\n"
-        "🔹 `/login [ID] [Pass]` ➡️ Check Key & Get 23 Buttons\n"
+        "🔹 `/login [ID] [Pass]` ➡️ Check Key & Get Bots List\n"
         "🔹 `/status` ➡️ Check your remaining days & time\n"
         "🔹 `/setup` ➡️ Run inside group to lock & deploy bots"
     )
