@@ -91,7 +91,7 @@ async def login(update: Update, context):
         # 23      
         keyboard = []
         row = []
-        render_base_url = "https://onrender.com"
+        render_base_url = "https://auto-reaction-bot-ayqv.onrender.com"
         
         for i in range(1, 24):
             #                 
