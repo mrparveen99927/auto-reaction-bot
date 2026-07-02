@@ -1,69 +1,59 @@
-# bot.py
-import logging
-import contextlib
-import uvicorn
-from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters
+# bot.py - मुख्य फ़ाइल जो पूरे आर्किटेक्चर को एक साथ चलाती है
 
-from config import BOT_TOKEN
-from database import init_db
-import user_handlers
-import admin_handlers
-import reaction_engine
+import os
+import asyncio
+import threading
+from flask import Flask
+from pyrogram import Client
+import config
+from reaction_engine import start_reaction_engine
 
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s', level=logging.INFO)
+# 1. रेंडर सर्वर को ज़िंदा रखने के लिए FLASK WEB SERVER सेटअप
+flask_app = Flask(__name__)
 
-bot_app = Application.builder().token(BOT_TOKEN).build()
+@flask_app.route('/')
+def health_check():
+    # रेंडर का स्टेटस चेक करने के लिए (https://auto-reaction-bot-ayqv.onrender.com)
+    return "✅ Central Reaction Bot Server is Live and Healthy!", 200
 
-@contextlib.asynccontextmanager
-async def lifespan(app: FastAPI):
-    init_db()
+@flask_app.route('/telegram', methods=['POST'])
+def telegram_webhook():
+    # आपके टेलीग्राम लाइव वेबहुक एंडपॉइंट के लिए
+    return "OK", 200
+
+def run_flask_server():
+    # रेंडर द्वारा दिए गए डायनामिक पोर्ट को बाइंड करना
+    port = int(os.environ.get("PORT", 5000))
+    flask_app.run(host="0.0.0.0", port=port)
+
+# 2. मेन कंट्रोलर बॉट क्लाइंट (यह आपके हैंडलर फ़ाइलों के प्लगइन्स को ऑटो-लोड करेगा)
+main_bot = Client(
+    "MainControlBot",
+    api_id=config.API_ID,
+    api_hash=config.API_HASH,
+    bot_token=config.BOT_TOKEN,
+    plugins=dict(root=".") # यह admin_handlers और user_handlers को खुद ढूंढ लेगा
+)
+
+async def main():
+    # अ) फ्लैस्क सर्वर को बैकग्राउंड थ्रेड में चालू करना
+    flask_thread = threading.Thread(target=run_flask_server)
+    flask_thread.daemon = True
+    flask_thread.start()
+    print("🌐 Flask Web Server successfully bound to Render Port.")
+
+    # ब) दोनों इंजनों को एक साथ एसिंक्रोनस तरीके से चालू करना
+    print("🤖 Launching Main Admin Bot...")
+    await main_bot.start()
     
-    # Handlers
-    bot_app.add_handler(CommandHandler("start", user_handlers.start))
-    bot_app.add_handler(CommandHandler("login", user_handlers.login))
-    bot_app.add_handler(CommandHandler("setup", user_handlers.setup_group))
-    bot_app.add_handler(CommandHandler("help", user_handlers.help_command))
-    bot_app.add_handler(CommandHandler("status", user_handlers.status_command))
+    print("⚡ Launching 23x Reaction Worker Engine...")
+    await start_reaction_engine()
     
-    bot_app.add_handler(CommandHandler("gen", admin_handlers.gen_key))
-    bot_app.add_handler(CommandHandler("remkey", admin_handlers.rem_key))
-    bot_app.add_handler(CommandHandler("stats", admin_handlers.stats_command))
-    bot_app.add_handler(CommandHandler("users", admin_handlers.users_list))
-    bot_app.add_handler(CommandHandler("broadcast", admin_handlers.broadcast))
-    
-    bot_app.add_handler(MessageHandler((filters.ChatType.GROUPS | filters.ChatType.CHANNEL) & ~filters.COMMAND, reaction_engine.auto_react))
-    
-    await bot_app.initialize()
-    await bot_app.start()
-    
-    your_render_url = "https://auto-reaction-bot-ayqv.onrender.com"
-    await bot_app.bot.set_webhook(url=f"{your_render_url}/telegram")
-    
-    yield
-    await bot_app.stop()
-    await bot_app.shutdown()
+    # स) बॉट को चालू रखना जब तक आप खुद बंद न करें
+    print("🚀 System Setup Complete. Enterprise Bot Business is now ONLINE!")
+    await asyncio.Event().wait()
 
-api_app = FastAPI(lifespan=lifespan)
-
-@api_app.get("/redirect/{bot_num}")
-def redirect_to_bot(bot_num: int):
-    bot_username = f"FastReact{bot_num}_bot"
-    if bot_num == 20: bot_username = "FastReact21_bot"
-    return RedirectResponse(url=f"https://telegram.me{bot_username}?startgroup=true")
-
-@api_app.get("/")
-def read_root(): return {"status": "Online"}
-
-@api_app.post("/telegram")
-async def telegram_webhook(request: Request):
-    json_data = await request.json()
-    update = Update.de_json(json_data, bot_app.bot)
-    await bot_app.process_update(update)
-    return {"status": "ok"}
-
-if __name__ == '__main__':
-    uvicorn.run(api_app, host="0.0.0.0", port=10000)
+if __name__ == "__main__":
+    # पायथन के एसिंक्रोनस लूप को रन करना
+    asyncio.run(main())
     
