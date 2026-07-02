@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
     bot_app.add_handler(CommandHandler("start", user_handlers.start))
     bot_app.add_handler(CommandHandler("login", user_handlers.login))
     bot_app.add_handler(CommandHandler("setup", user_handlers.setup_group))
-    bot_app.add_handler(CommandHandler("help", help_command))
+    bot_app.add_handler(CommandHandler("help", user_handlers.help_command))
     bot_app.add_handler(CommandHandler("status", user_handlers.status_command))
     
     # Admin Panel Handlers from admin_handlers.py
@@ -53,19 +53,17 @@ async def lifespan(app: FastAPI):
 api_app = FastAPI(lifespan=lifespan)
 bot_app = Application.builder().token(BOT_TOKEN).build()
 
-# Smart URL redirect bypass logic (Updated to force-open inside Telegram App directly)
+# Smart URL redirect bypass logic (Fixed with telegram.me to support all phone browsers)
 @api_app.get("/redirect/{bot_num}")
 def redirect_to_bot(bot_num: int):
     bot_username = f"FastReact{bot_num}_bot"
     if bot_num == 20:
         bot_username = "FastReact21_bot"
-    
-    #  tg:// official deep link             
-    return RedirectResponse(url=f"tg://resolve?domain={bot_username}&startgroup=true")
+    return RedirectResponse(url=f"https://telegram.me{bot_username}?startgroup=true")
 
 @api_app.get("/")
 def read_root():
-    return {"status": "VIP 23-Buttons Deep-Link Engine Online"}
+    return {"status": "VIP 23-Buttons 6-Part Master Engine Online"}
 
 @api_app.post("/telegram")
 async def telegram_webhook(request: Request):

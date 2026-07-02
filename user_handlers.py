@@ -9,7 +9,7 @@ async def start(update: Update, context):
     if update.effective_chat.type == "private":
         await update.message.reply_text(
             "👋 *Welcome to VIP 23x Multi-Auto-Reaction Premium Service!*\n\n"
-            "🔹 Use `/login [ID] [Password]` to unlock your 23 helper bots.\n"
+            "🔹 Use `/login [ID] [Password]` to check your helper bots list.\n"
             "🔹 Use `/status` anytime to check your license validity.\n"
             "🔹 Use `/help` to see all available features.",
             parse_mode="Markdown"
@@ -44,13 +44,22 @@ async def login(update: Update, context):
         context.user_data['temp_access_id'] = access_id
         context.user_data['temp_password'] = password
         
+        # 100% सेफ बटन लॉजिक: बटन पर सीधे यूजरनेम दिखेगा और क्लिक करने पर ब्राउज़र नहीं खुलेगा
         keyboard = []
         row = []
-        render_base_url = "https://auto-reaction-bot-ayqv.onrender.com"
         
         for i in range(1, 24):
-            smart_link = f"{render_base_url}/redirect/{i}"
-            row.append(InlineKeyboardButton(text=f"➕ Bot {i}", url=smart_link))
+            bot_username = f"FastReact{i}_bot"
+            if i == 20:
+                bot_username = "FastReact21_bot"  # गैप फिक्स
+                
+            # यहाँ url हटाकर callback_data लगाया है ताकि ब्राउज़र एरर कभी न आए
+            button_text = f"➕ @FastReact{i}_bot"
+            if i == 20:
+                button_text = f"➕ @FastReact21_bot"
+                
+            row.append(InlineKeyboardButton(text=button_text, callback_data=f"bot_{i}"))
+            
             if len(row) == 2:
                 keyboard.append(row)
                 row = []
@@ -62,8 +71,11 @@ async def login(update: Update, context):
             f"🎉 *Login Successful!*\n\n"
             f"🔑 VIP ID: `{access_id}`\n"
             f"⏳ Expires On: `{expiry_date}`\n\n"
-            f"🔒 Click the 23 buttons below to add active helper bots to your group.\n\n"
-            f"⚠️ *Important:* After adding all bots as Admin, go to your group and type `/setup`",
+            f"🔒 *How to Add Bots:*\n"
+            f"1️⃣ ऊपर बटनों में दिए गए बॉट्स के यूजरनेम को देखें।\n"
+            f"2️⃣ अपने टेलीग्राम ग्रुप की 'Add Member' सेटिंग में जाएँ।\n"
+            f"3️⃣ इन यूजरनेम्स को सर्च करके एक-एक करके ग्रुप में जोड़ें और **Admin** बना दें।\n\n"
+            f"⚠️ *Important:* सभी बॉट्स को शामिल करने के बाद ग्रुप में जाकर टाइप करें: `/setup`",
             reply_markup=reply_markup, parse_mode="Markdown"
         )
     except Exception as e:
