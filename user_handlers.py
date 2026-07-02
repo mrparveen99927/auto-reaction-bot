@@ -23,8 +23,8 @@ async def login(update: Update, context):
             await update.message.reply_text("❌ Use format: `/login [Access_ID] [Password]`")
             return
             
-        access_id = str(context.args).strip()
-        password = str(context.args).strip()
+        access_id = str(context.args[0]).strip()
+        password = str(context.args[1]).strip()
         
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
@@ -46,7 +46,7 @@ async def login(update: Update, context):
         
         keyboard = []
         row = []
-        render_base_url = "https://onrender.com"
+        render_base_url = "https://auto-reaction-bot-ayqv.onrender.com"
         
         for i in range(1, 24):
             smart_link = f"{render_base_url}/redirect/{i}"

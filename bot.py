@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
     await bot_app.initialize()
     await bot_app.start()
     
-    your_render_url = "https://onrender.com"
+    your_render_url = "https://auto-reaction-bot-ayqv.onrender.com"
     await bot_app.bot.set_webhook(url=f"{your_render_url}/telegram")
     logging.info(f" Masters Modular Webhook set to: {your_render_url}/telegram")
     
