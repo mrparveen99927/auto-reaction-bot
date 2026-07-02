@@ -184,7 +184,7 @@ async def login_cmd(_, message: Message):
 
 # ==================== 🤖 AUTO REACTION LOGIC ====================
 
-@main_bot.on_message(filters.and_(filters.chat, filters.not_(filters.service)))
+@main_bot.on_message(filters.chat & ~filters.service)
 async def reaction_handler(_, message: Message):
     chat_id = str(message.chat.id)
     
