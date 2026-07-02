@@ -53,13 +53,13 @@ async def lifespan(app: FastAPI):
 api_app = FastAPI(lifespan=lifespan)
 bot_app = Application.builder().token(BOT_TOKEN).build()
 
-# Smart URL redirect bypass logic
+# Smart URL redirect bypass logic (Fixed with telegram.me to support all phone browsers)
 @api_app.get("/redirect/{bot_num}")
 def redirect_to_bot(bot_num: int):
     bot_username = f"FastReact{bot_num}_bot"
     if bot_num == 20:
         bot_username = "FastReact21_bot"
-    return RedirectResponse(url=f"https://t.me{bot_username}?startgroup=true")
+    return RedirectResponse(url=f"https://telegram.me{bot_username}?startgroup=true")
 
 @api_app.get("/")
 def read_root():
