@@ -5,6 +5,7 @@ import contextlib
 import httpx
 import uvicorn
 from fastapi import FastAPI, Request
+from fastapi.responses import RedirectResponse
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
@@ -15,6 +16,7 @@ from database import init_db, generate_user_credentials, login_and_lock_group, i
 # Logging Setup
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s', level=logging.INFO)
 
+# FastAPI + Telegram Lifespan Engine
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
@@ -40,6 +42,19 @@ async def lifespan(app: FastAPI):
 api_app = FastAPI(lifespan=lifespan)
 bot_app = Application.builder().token(BOT_TOKEN).build()
 
+# ---    (        ) ---
+@api_app.get("/redirect/{bot_num}")
+def redirect_to_bot(bot_num: int):
+    #        
+    bot_username = f"FastReact{bot_num}_bot"
+    if bot_num == 20:
+        bot_username = "FastReact21_bot" #  20        
+    return RedirectResponse(url=f"https://t.me{bot_username}?startgroup=true")
+
+@api_app.get("/")
+def read_root():
+    return {"status": "VIP 23-Buttons Secure Engine Online"}
+
 @api_app.post("/telegram")
 async def telegram_webhook(request: Request):
     json_data = await request.json()
@@ -47,17 +62,13 @@ async def telegram_webhook(request: Request):
     await bot_app.process_update(update)
     return {"status": "ok"}
 
-@api_app.get("/")
-def read_root():
-    return {"status": "VIP Smart Button Engine Online"}
-
 # ==================== BOT HANDLERS ====================
 
 async def start(update: Update, context):
     if update.effective_chat.type == "private":
         await update.message.reply_text(
             " Welcome to VIP 23x Multi-Auto-Reaction Service!\n\n"
-            " To login and get bot buttons, send your credentials like this:\n"
+            " To login and get all 23 buttons, send your credentials like this:\n"
             "`/login [Access_ID] [Password]`"
         )
 
@@ -65,27 +76,27 @@ async def login(update: Update, context):
     if update.effective_chat.type != "private":
         return
     try:
-        if not context.args or len(context.args) < 2:
+        #      
+        args = update.message.text.split()
+        if len(args) < 3:
             await update.message.reply_text(" Use format: `/login [Access_ID] [Password]`")
             return
             
-        access_id = str(context.args[0]).strip()
-        password = str(context.args[1]).strip()
+        access_id = str(args[1]).strip()
+        password = str(args[2]).strip()
         
         context.user_data['temp_access_id'] = access_id
         context.user_data['temp_password'] = password
         
+        # 23      
         keyboard = []
         row = []
+        render_base_url = "https://onrender.com"
         
-        #  :      ,        ,    
         for i in range(1, 24):
-            bot_username = f"FastReact{i}_bot"
-            if i == 20: #  20       
-                continue
-                
-            link = f"https://t.me{bot_username}?startgroup=true"
-            row.append(InlineKeyboardButton(text=f" Bot {i}", url=link))
+            #                 
+            smart_link = f"{render_base_url}/redirect/{i}"
+            row.append(InlineKeyboardButton(text=f" Bot {i}", url=smart_link))
             
             if len(row) == 2:
                 keyboard.append(row)
@@ -98,12 +109,12 @@ async def login(update: Update, context):
         await update.message.reply_text(
             f" *Login Successful!*\n\n"
             f" VIP ID: `{access_id}`\n"
-            f" Click below to add the active helper bots to your group.\n\n"
-            f" *Note:* If any specific bot doesn't open, it means it is deleted from BotFather. Just skip it and add the rest! After adding, run `/setup` in group.",
+            f" Click the 23 buttons below to add active helper bots to your group.\n\n"
+            f" *Important:* After adding all bots as Admin, go to your group and type `/setup`",
             reply_markup=reply_markup, parse_mode="Markdown"
         )
     except Exception as e:
-        await update.message.reply_text(f" Login Bug Fixed: {str(e)}")
+        await update.message.reply_text(f" Login Process Error: {str(e)}")
 
 async def setup_group(update: Update, context):
     if update.effective_chat.type not in ["group", "supergroup"]:
@@ -141,7 +152,7 @@ async def help_command(update: Update, context):
     help_text = (
         " *Available Commands:*\n\n"
         " `/start`  Start the bot\n"
-        " `/login [ID] [Password]`  Login and get buttons\n"
+        " `/login [ID] [Password]`  Login and get 23 buttons\n"
         " `/setup`  Run inside group to lock and start reactions."
     )
     await update.message.reply_text(help_text, parse_mode="Markdown")
@@ -150,13 +161,14 @@ async def gen_key(update: Update, context):
     if update.effective_user.id != ADMIN_ID:
         return
     try:
-        if not context.args or len(context.args) < 2:
+        args = update.message.text.split()
+        if len(args) < 3:
             await update.message.reply_text(" Use format: `/gen [ID] [Password] [Days]`")
             return
             
-        new_id = str(context.args[0]).strip()
-        new_pass = str(context.args[1]).strip()
-        days = int(context.args[2]) if len(context.args) > 2 else 30
+        new_id = str(args[1]).strip()
+        new_pass = str(args[2]).strip()
+        days = int(args[3]) if len(args) > 3 else 30
         
         if generate_user_credentials(new_id, new_pass, days):
             await update.message.reply_text(f" VIP Credentials Generated:\nID: `{new_id}`\nPass: `{new_pass}`\nDays: {days}")
