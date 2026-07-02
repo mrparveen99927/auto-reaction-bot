@@ -21,21 +21,18 @@ bot_app = Application.builder().token(BOT_TOKEN).build()
 async def lifespan(app: FastAPI):
     init_db()
     
-    # User Commands
     bot_app.add_handler(CommandHandler("start", user_handlers.start))
     bot_app.add_handler(CommandHandler("login", user_handlers.login))
     bot_app.add_handler(CommandHandler("setup", user_handlers.setup_group))
     bot_app.add_handler(CommandHandler("help", user_handlers.help_command))
     bot_app.add_handler(CommandHandler("status", user_handlers.status_command))
     
-    # Admin Commands
     bot_app.add_handler(CommandHandler("gen", admin_handlers.gen_key))
     bot_app.add_handler(CommandHandler("remkey", admin_handlers.rem_key))
     bot_app.add_handler(CommandHandler("stats", admin_handlers.stats_command))
     bot_app.add_handler(CommandHandler("users", admin_handlers.users_list))
     bot_app.add_handler(CommandHandler("broadcast", admin_handlers.broadcast))
     
-    # Groups and Channel filters sync
     bot_app.add_handler(MessageHandler((filters.ChatType.GROUPS | filters.ChatType.CHANNEL) & ~filters.COMMAND, reaction_engine.auto_react))
     
     await bot_app.initialize()
@@ -43,7 +40,6 @@ async def lifespan(app: FastAPI):
     
     your_render_url = "https://auto-reaction-bot-ayqv.onrender.com"
     await bot_app.bot.set_webhook(url=f"{your_render_url}/telegram")
-    logging.info(f"Webhook active on: {your_render_url}/telegram")
     
     yield
     await bot_app.stop()
@@ -58,7 +54,7 @@ def redirect_to_bot(bot_num: int):
     return RedirectResponse(url=f"https://telegram.me{bot_username}?startgroup=true")
 
 @api_app.get("/")
-def read_root(): return {"status": "VIP Engine Online"}
+def read_root(): return {"status": "Online"}
 
 @api_app.post("/telegram")
 async def telegram_webhook(request: Request):

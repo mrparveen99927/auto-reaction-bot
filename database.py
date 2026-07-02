@@ -1,91 +1,81 @@
 # database.py
-import sqlite3
+import motor.motor_asyncio
 from datetime import datetime, timedelta
-from config import DB_NAME
+from config import MONGO_URI
+
+client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI)
+db = client["reaction_bot_db"]
+users_collection = db["users"]
 
 def init_db():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS users (
-        access_id TEXT PRIMARY KEY,
-        password TEXT,
-        group_id INTEGER UNIQUE,
-        expiry_date TEXT,
-        status TEXT DEFAULT 'active',
-        chat_id INTEGER
+    pass
+
+async def save_chat_id(access_id, chat_id):
+    await users_collection.update_one(
+        {"access_id": access_id},
+        {"$set": {"chat_id": chat_id}}
     )
-    ''')
-    conn.commit()
-    conn.close()
 
-def save_chat_id(access_id, chat_id):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET chat_id = ? WHERE access_id = ?", (chat_id, access_id))
-    conn.commit()
-    conn.close()
-
-def generate_user_credentials(access_id, password, days=30):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
+async def generate_user_credentials(access_id, password, days=30):
     expiry = (datetime.now() + timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
-    try:
-        cursor.execute('''
-        INSERT INTO users (access_id, password, expiry_date, status)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(access_id) DO UPDATE SET
-            password=excluded.password,
-            expiry_date=excluded.expiry_date,
-            status='active'
-        ''', (access_id, password, expiry, 'active'))
-        conn.commit()
-        success = True
-    except sqlite3.IntegrityError:
-        success = False
-    finally:
-        conn.close()
-    return success
+    await users_collection.update_one(
+        {"access_id": access_id},
+        {"$set": {
+            "password": password,
+            "expiry_date": expiry,
+            "status": "active"
+        }},
+        upsert=True
+    )
+    return True
 
-def login_and_lock_group(access_id, password, group_id):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    if password == "BYPASS_CHECK":
-        cursor.execute("SELECT expiry_date, group_id FROM users WHERE access_id = ? AND status = 'active'", (access_id,))
-    else:
-        cursor.execute("SELECT expiry_date, group_id FROM users WHERE access_id = ? AND password = ? AND status = 'active'", (access_id, password))
-    result = cursor.fetchone()
-    if not result:
-        conn.close()
-        return "invalid"
-    expiry_date, locked_group = result
-    if datetime.now() > datetime.strptime(expiry_date, '%Y-%m-%d %H:%M:%S'):
-        conn.close()
-        return "expired"
+async def login_and_lock_group(access_id, password, group_id):
+    user = await users_collection.find_one({"access_id": access_id, "status": "active"})
+    if not user: return "invalid"
+    if password != "BYPASS_CHECK" and user["password"] != password: return "invalid"
+    
+    expiry_date = user["expiry_date"]
+    if datetime.now() > datetime.strptime(expiry_date, '%Y-%m-%d %H:%M:%S'): return "expired"
+        
+    locked_group = user.get("group_id")
     if locked_group is None:
-        try:
-            cursor.execute("UPDATE users SET group_id = ? WHERE access_id = ?", (group_id, access_id))
-            conn.commit()
-            conn.close()
-            return "success"
-        except sqlite3.IntegrityError:
-            conn.close()
-            return "group_already_used"
-    elif locked_group == group_id:
-        conn.close()
+        existing_group = await users_collection.find_one({"group_id": group_id})
+        if existing_group and existing_group["access_id"] != access_id: return "group_already_used"
+            
+        await users_collection.update_one(
+            {"access_id": access_id},
+            {"$set": {"group_id": group_id}}
+        )
         return "success"
-    else:
-        conn.close()
-        return "wrong_group"
+    elif locked_group == group_id: return "success"
+    else: return "wrong_group"
 
-def is_group_allowed(group_id):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT expiry_date FROM users WHERE group_id = ? AND status = 'active'", (group_id,))
-    result = cursor.fetchone()
-    conn.close()
-    if result:
-        if datetime.now() < datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S'):
-            return True
+async def is_group_allowed(group_id):
+    user = await users_collection.find_one({"group_id": group_id, "status": "active"})
+    if user:
+        if datetime.now() < datetime.strptime(user["expiry_date"], '%Y-%m-%d %H:%M:%S'): return True
     return False
+
+async def db_delete_key(target_id):
+    res = await users_collection.delete_one({"access_id": target_id})
+    return res.deleted_count
+
+async def db_get_stats():
+    total_users = await users_collection.count_documents({})
+    active_groups = await users_collection.count_documents({"group_id": {"$exists": True, "$ne": None}})
+    return total_users, active_groups
+
+async def db_get_users():
+    cursor = users_collection.find({})
+    users = []
+    async for doc in cursor:
+        users.append((doc["access_id"], doc.get("password"), doc.get("group_id"), doc["expiry_date"]))
+    return users
+
+async def db_get_broadcast_chats():
+    cursor = users_collection.find({"chat_id": {"$exists": True, "$ne": None}})
+    chats = []
+    async for doc in cursor:
+        chats.append((doc["chat_id"],))
+    return chats
     

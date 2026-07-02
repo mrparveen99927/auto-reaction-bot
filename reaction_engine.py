@@ -22,7 +22,7 @@ async def auto_react(update: Update, context):
     if not target_msg: return
     
     group_id = update.effective_chat.id
-    if not is_group_allowed(group_id): return
+    if not await is_group_allowed(group_id): return
     
     premium_reactions = ["👍", "❤", "🔥", "🎉", "🤩", "🚀", "🥰", "👏", "⚡", "😎"]
     tasks = [

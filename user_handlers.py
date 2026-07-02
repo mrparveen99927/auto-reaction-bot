@@ -1,22 +1,8 @@
 # user_handlers.py
-import sqlite3
-import asyncio
 from datetime import datetime
 from telegram import Update
-from config import ADMIN_ID, DB_NAME
-from database import generate_user_credentials, login_and_lock_group, save_chat_id
-
-def db_verify_user(access_id, password):
-    with sqlite3.connect(DB_NAME) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT expiry_date, status FROM users WHERE access_id = ? AND password = ?", (access_id, password))
-        return cursor.fetchone()
-
-def db_get_status_by_tg_id(tg_user_id):
-    with sqlite3.connect(DB_NAME) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT access_id, expiry_date, group_id FROM users WHERE chat_id = ?", (tg_user_id,))
-        return cursor.fetchone()
+from config import ADMIN_ID
+import database
 
 async def start(update: Update, context):
     if update.effective_chat.type == "private":
@@ -26,7 +12,7 @@ async def start(update: Update, context):
             "Send: `/login [Access_ID] [Password]` then run `/setup` in group.\n\n"
             "📢 *For Channels Setup:*\n"
             "Send: `/login [Access_ID] [Password] [Channel_ID_or_@Username]`\n\n"
-            "⏱ Use `/status` to check remaining days.",
+            "⏳ Use `/status` to check remaining days.",
             parse_mode="Markdown"
         )
 
@@ -41,17 +27,17 @@ async def login(update: Update, context):
         access_id = str(text_parts[1]).strip()
         password = str(text_parts[2]).strip()
         
-        res = await asyncio.to_thread(db_verify_user, access_id, password)
-        if not res:
+        res = await database.users_collection.find_one({"access_id": access_id})
+        if not res or res.get("password") != password:
             await update.message.reply_text("❌ Invalid ID or Password!")
             return
             
-        expiry_date, status = res
-        if status != 'active' or datetime.now() > datetime.strptime(expiry_date, '%Y-%m-%d %H:%M:%S'):
+        expiry_date = res.get("expiry_date")
+        if res.get("status") != 'active' or datetime.now() > datetime.strptime(expiry_date, '%Y-%m-%d %H:%M:%S'):
             await update.message.reply_text("❌ Your VIP license has expired!")
             return
             
-        await asyncio.to_thread(save_chat_id, access_id, update.effective_chat.id)
+        await database.save_chat_id(access_id, update.effective_chat.id)
         
         lock_msg = "Not locked yet. Run `/setup` inside group to activate."
         if len(text_parts) > 3:
@@ -67,7 +53,7 @@ async def login(update: Update, context):
                 else:
                     target_chat_id = int(raw_chat_id)
                 
-                lock_status = await asyncio.to_thread(login_and_lock_group, access_id, "BYPASS_CHECK", target_chat_id)
+                lock_status = await database.login_and_lock_group(access_id, "BYPASS_CHECK", target_chat_id)
                 if lock_status == "success":
                     lock_msg = f"Locked to Chat ID: `{target_chat_id}`"
                 elif lock_status == "group_already_used":
@@ -96,19 +82,19 @@ async def setup_group(update: Update, context):
     if update.effective_chat.type not in ["group", "supergroup"]: return
     user_id = update.effective_user.id
     if user_id == ADMIN_ID:
-        await asyncio.to_thread(generate_user_credentials, "ADMIN_TEST", "ADMIN_PASS", days=365)
-        status = await asyncio.to_thread(login_and_lock_group, "ADMIN_TEST", "ADMIN_PASS", update.effective_chat.id)
+        await database.generate_user_credentials("ADMIN_TEST", "ADMIN_PASS", days=365)
+        status = await database.login_and_lock_group("ADMIN_TEST", "ADMIN_PASS", update.effective_chat.id)
         if status in ["success", "group_already_used"]:
             await update.message.reply_text("👑 Group activated for 365 Days!")
             return
 
-    user_data = await asyncio.to_thread(db_get_status_by_tg_id, user_id)
+    user_data = await database.users_collection.find_one({"chat_id": user_id})
     if not user_data:
         await update.message.reply_text("❌ Please go to Bot PM and `/login` first.")
         return
         
-    access_id, _, _ = user_data
-    status = await asyncio.to_thread(login_and_lock_group, access_id, "BYPASS_CHECK", update.effective_chat.id)
+    access_id = user_data.get("access_id")
+    status = await database.login_and_lock_group(access_id, "BYPASS_CHECK", update.effective_chat.id)
     if status == "success":
         await update.message.reply_text("🎉 Group Verified & Locked!")
     else:
@@ -117,9 +103,11 @@ async def setup_group(update: Update, context):
 async def status_command(update: Update, context):
     if update.effective_chat.type != "private": return
     user_id = update.effective_user.id
-    user_data = await asyncio.to_thread(db_get_status_by_tg_id, user_id)
+    user_data = await database.users_collection.find_one({"chat_id": user_id})
     if res := user_data:
-        access_id, expiry_date, group_id = res
+        access_id = res.get("access_id")
+        expiry_date = res.get("expiry_date")
+        group_id = res.get("group_id", "Not Bound Yet")
         time_left = datetime.strptime(expiry_date, '%Y-%m-%d %H:%M:%S') - datetime.now()
         await update.message.reply_text(f"🔑 ID: `{access_id}`\n📡 Bound Chat: `{group_id}`\n⏳ Left: *{time_left.days} Days*", parse_mode="Markdown")
     else:
