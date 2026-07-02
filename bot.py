@@ -1,21 +1,12 @@
 # bot.py
 import logging
 import random
-import asyncio
+import contextlib
 import httpx
 import uvicorn
 from fastapi import FastAPI, Request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
-
-# ---  : Python 3.13/3.14        ---
-try:
-    import telegram.ext
-    if not hasattr(telegram.ext.Updater, '_Updater__polling_cleanup_cb'):
-        setattr(telegram.ext.Updater, '_Updater__polling_cleanup_cb', lambda *args, **kwargs: None)
-except Exception:
-    pass
-# -------------------------------------------------------------
 
 #      
 from config import BOT_TOKEN, ADMIN_ID, VIP_PASSWORD, HELPER_BOTS
@@ -24,12 +15,41 @@ from database import init_db, generate_user_credentials, login_and_lock_group, i
 #  
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s', level=logging.INFO)
 
-api_app = FastAPI()
+# ---     (FastAPI + Telegram Engine Connection) ---
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI):
+    #   
+    init_db()
+    
+    #    
+    bot_app.add_handler(CommandHandler("start", start))
+    bot_app.add_handler(CommandHandler("login", login))
+    bot_app.add_handler(CommandHandler("setup", setup_group))
+    bot_app.add_handler(CommandHandler("help", help_command))
+    bot_app.add_handler(CommandHandler("gen", gen_key))
+    bot_app.add_handler(MessageHandler(filters.ChatType.GROUPS & ~filters.COMMAND, auto_react))
+    
+    #    
+    await bot_app.initialize()
+    await bot_app.start()
+    
+    #    
+    your_render_url = "https://onrender.com"
+    await bot_app.bot.set_webhook(url=f"{your_render_url}/telegram")
+    logging.info(f" Webhook successfully active at: {your_render_url}/telegram")
+    
+    yield
+    #        
+    await bot_app.stop()
+    await bot_app.shutdown()
+
+# FastAPI   (Lifespan  )
+api_app = FastAPI(lifespan=lifespan)
 bot_app = Application.builder().token(BOT_TOKEN).build()
 
 @api_app.get("/")
 def read_root():
-    return {"status": "VIP 23-Bots Webhook Engine with Disk is Online 24/7"}
+    return {"status": "VIP 23-Bots Engine v21.3 is Online 24/7"}
 
 @api_app.post("/telegram")
 async def telegram_webhook(request: Request):
@@ -37,6 +57,8 @@ async def telegram_webhook(request: Request):
     update = Update.de_json(json_data, bot_app.bot)
     await bot_app.process_update(update)
     return {"status": "ok"}
+
+# ====================      ====================
 
 async def start(update: Update, context):
     if update.effective_chat.type == "private":
@@ -133,6 +155,7 @@ async def gen_key(update: Update, context):
     except IndexError:
         await update.message.reply_text("  : `/gen [ID] [Password] [Days]`")
 
+# ====================     ====================
 async def send_reaction_async(client, token, chat_id, message_id, reaction):
     try:
         url = f"https://telegram.org{token}/setMessageReaction"
@@ -163,25 +186,6 @@ async def auto_react(update: Update, context):
             for bot in HELPER_BOTS
         ]
         await asyncio.gather(*tasks)
-
-@api_app.on_event("startup")
-async def on_startup():
-    init_db()
-    
-    bot_app.add_handler(CommandHandler("start", start))
-    bot_app.add_handler(CommandHandler("login", login))
-    bot_app.add_handler(CommandHandler("setup", setup_group))
-    bot_app.add_handler(CommandHandler("help", help_command))
-    bot_app.add_handler(CommandHandler("gen", gen_key))
-    
-    bot_app.add_handler(MessageHandler(filters.ChatType.GROUPS & ~filters.COMMAND, auto_react))
-    
-    await bot_app.initialize()
-    await bot_app.start()
-    
-    your_render_url = "https://auto-reaction-bot-ayqv.onrender.com"
-    await bot_app.bot.set_webhook(url=f"{your_render_url}/telegram")
-    logging.info(f" Webhook fully set to: {your_render_url}/telegram")
 
 if __name__ == '__main__':
     uvicorn.run(api_app, host="0.0.0.0", port=10000)
