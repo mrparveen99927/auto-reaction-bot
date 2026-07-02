@@ -8,15 +8,16 @@ async def gen_key(update: Update, context):
     if update.effective_user.id != ADMIN_ID:
         return
     try:
-        # यहाँ लिस्ट को बिल्कुल सही स्ट्रिंग में बदला गया है
+        # यहाँ आर्ग्युमेंट्स को बिना ब्रैकेट के बिल्कुल साफ़ स्ट्रिंग में निकाला गया है
         if not context.args or len(context.args) < 2:
             await update.message.reply_text("❌ Format: `/gen [ID] [Password] [Days]`")
             return
             
+        # [0] और [1] का इस्तेमाल करके सीधे असली शब्दों को निकाला गया है
         new_id = str(context.args[0]).strip()
         new_pass = str(context.args[1]).strip()
         
-        # दिनों की संख्या को लिस्ट से निकालकर नंबर में बदलना
+        # दिनों की संख्या को नंबर में बदलना
         days = int(context.args[2]) if len(context.args) > 2 else 30
         
         if generate_user_credentials(new_id, new_pass, days):
