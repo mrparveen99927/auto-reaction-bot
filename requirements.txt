@@ -1,3 +1,3 @@
-python-telegram-bot[ext]==20.8
+python-telegram-bot[ext]==21.3
 fastapi==0.110.0
 uvicorn==0.28.0
