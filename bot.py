@@ -37,7 +37,8 @@ async def lifespan(app: FastAPI):
     bot_app.add_handler(CommandHandler("broadcast", admin_handlers.broadcast))
     
     # Message interceptor for multi-reaction blast
-    bot_app.add_handler(MessageHandler(filters.ChatType.GROUPS & ~filters.COMMAND, reaction_engine.auto_react))
+    # फिक्स: ग्रुप्स और चैनल्स दोनों के मैसेजेस को कैप्चर करने के लिए फ़िल्टर अपडेट किया गया
+bot_app.add_handler(MessageHandler((filters.ChatType.GROUPS | filters.ChatType.CHANNELS) & ~filters.COMMAND, reaction_engine.auto_react))
     
     await bot_app.initialize()
     await bot_app.start()
