@@ -2,7 +2,7 @@
 BOT_TOKEN = "8843244865:AAGS47kvrD-ZeOTr-EgxSYFoYY-Cg3SJk-A"
 ADMIN_ID = 1780858471
 VIP_PASSWORD = "PREMIUM_VIP_2026"
-DB_NAME = "/data/bot_users.db"
+DB_NAME = "bot_users.db"
 
 HELPER_BOTS = [
     {"token": "7759702480:AAF9Wts-mQJwo-kABbLH-07efM8oKicdhcM", "username": "FastReact1_bot"},
