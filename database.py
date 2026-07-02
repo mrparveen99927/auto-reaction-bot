@@ -5,7 +5,7 @@ from config import MONGO_URI
 
 client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI)
 db = client["reaction_bot_db"]
-users_collection = db["users"]
+users_collection = db["reaction_vip_users"]
 
 def init_db():
     pass
