@@ -7,54 +7,51 @@ from fastapi.responses import RedirectResponse
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
-# Sub-modules imports
 from config import BOT_TOKEN
 from database import init_db
 import user_handlers
 import admin_handlers
 import reaction_engine
 
-# Logging Setup
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s', level=logging.INFO)
+
+# फिक्स: NameError से बचने के लिए इसे ऊपर डिफाइन किया गया है
+bot_app = Application.builder().token(BOT_TOKEN).build()
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize DB tables at startup
     init_db()
     
-    # Register Core Bot Handlers from user_handlers.py
+    # User Handlers
     bot_app.add_handler(CommandHandler("start", user_handlers.start))
     bot_app.add_handler(CommandHandler("login", user_handlers.login))
     bot_app.add_handler(CommandHandler("setup", user_handlers.setup_group))
     bot_app.add_handler(CommandHandler("help", user_handlers.help_command))
     bot_app.add_handler(CommandHandler("status", user_handlers.status_command))
     
-    # Admin Panel Handlers from admin_handlers.py
+    # Admin Handlers
     bot_app.add_handler(CommandHandler("gen", admin_handlers.gen_key))
     bot_app.add_handler(CommandHandler("remkey", admin_handlers.rem_key))
     bot_app.add_handler(CommandHandler("stats", admin_handlers.stats_command))
     bot_app.add_handler(CommandHandler("users", admin_handlers.users_list))
     bot_app.add_handler(CommandHandler("broadcast", admin_handlers.broadcast))
     
-    # Message interceptor for multi-reaction blast
-    # फिक्स: ग्रुप्स और चैनल्स दोनों के मैसेजेस को कैप्चर करने के लिए फ़िल्टर अपडेट किया गया
-bot_app.add_handler(MessageHandler((filters.ChatType.GROUPS | filters.ChatType.CHANNELS) & ~filters.COMMAND, reaction_engine.auto_react))
+    # फिक्स: ग्रुप और चैनल दोनों का सपोर्ट एक साथ
+    bot_app.add_handler(MessageHandler((filters.ChatType.GROUPS | filters.ChatType.CHANNELS) & ~filters.COMMAND, reaction_engine.auto_react))
     
     await bot_app.initialize()
     await bot_app.start()
     
-    your_render_url = "https://auto-reaction-bot-ayqv.onrender.com"
+    your_render_url = "https://auto-reaction-bot-ayqv.onrender.com""
     await bot_app.bot.set_webhook(url=f"{your_render_url}/telegram")
-    logging.info(f" Masters Modular Webhook set to: {your_render_url}/telegram")
+    logging.info(f"Masters Webhook set to: {your_render_url}/telegram")
     
     yield
     await bot_app.stop()
     await bot_app.shutdown()
 
 api_app = FastAPI(lifespan=lifespan)
-bot_app = Application.builder().token(BOT_TOKEN).build()
 
-# Smart URL redirect bypass logic (Fixed with telegram.me to support all phone browsers)
 @api_app.get("/redirect/{bot_num}")
 def redirect_to_bot(bot_num: int):
     bot_username = f"FastReact{bot_num}_bot"
@@ -64,7 +61,7 @@ def redirect_to_bot(bot_num: int):
 
 @api_app.get("/")
 def read_root():
-    return {"status": "VIP 23-Buttons 6-Part Master Engine Online"}
+    return {"status": "VIP 23 Buttons Master Engine Online"}
 
 @api_app.post("/telegram")
 async def telegram_webhook(request: Request):
@@ -75,4 +72,3 @@ async def telegram_webhook(request: Request):
 
 if __name__ == '__main__':
     uvicorn.run(api_app, host="0.0.0.0", port=10000)
-    

