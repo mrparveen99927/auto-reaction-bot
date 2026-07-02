@@ -8,20 +8,18 @@ from fastapi import FastAPI, Request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
-#      
+# Credentials and DB Imports
 from config import BOT_TOKEN, ADMIN_ID, VIP_PASSWORD, HELPER_BOTS
 from database import init_db, generate_user_credentials, login_and_lock_group, is_group_allowed
 
-#  
+# Logging Setup
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s', level=logging.INFO)
 
-# ---     (FastAPI + Telegram Engine Connection) ---
+# FastAPI + Telegram Lifespan Engine
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
-    #   
     init_db()
     
-    #    
     bot_app.add_handler(CommandHandler("start", start))
     bot_app.add_handler(CommandHandler("login", login))
     bot_app.add_handler(CommandHandler("setup", setup_group))
@@ -29,27 +27,23 @@ async def lifespan(app: FastAPI):
     bot_app.add_handler(CommandHandler("gen", gen_key))
     bot_app.add_handler(MessageHandler(filters.ChatType.GROUPS & ~filters.COMMAND, auto_react))
     
-    #    
     await bot_app.initialize()
     await bot_app.start()
     
-    #    
     your_render_url = "https://onrender.com"
     await bot_app.bot.set_webhook(url=f"{your_render_url}/telegram")
-    logging.info(f" Webhook successfully active at: {your_render_url}/telegram")
+    logging.info(f" Webhook active at: {your_render_url}/telegram")
     
     yield
-    #        
     await bot_app.stop()
     await bot_app.shutdown()
 
-# FastAPI   (Lifespan  )
 api_app = FastAPI(lifespan=lifespan)
 bot_app = Application.builder().token(BOT_TOKEN).build()
 
 @api_app.get("/")
 def read_root():
-    return {"status": "VIP 23-Bots Engine v21.3 is Online 24/7"}
+    return {"status": "VIP 21.3 Clean English Engine Online"}
 
 @api_app.post("/telegram")
 async def telegram_webhook(request: Request):
@@ -58,13 +52,13 @@ async def telegram_webhook(request: Request):
     await bot_app.process_update(update)
     return {"status": "ok"}
 
-# ====================      ====================
+# ==================== BOT HANDLERS ====================
 
 async def start(update: Update, context):
     if update.effective_chat.type == "private":
         await update.message.reply_text(
-            " !  23 --   \n\n"
-            "         Access ID     :\n"
+            " Welcome to VIP 23x Multi-Auto-Reaction Service!\n\n"
+            " To login and get bot buttons, send your credentials like this:\n"
             "`/login [Access_ID] [Password]`"
         )
 
@@ -72,8 +66,14 @@ async def login(update: Update, context):
     if update.effective_chat.type != "private":
         return
     try:
-        access_id = context.args[0]
-        password = context.args[1]
+        # Arguments parsed properly using split to avoid encoding bugs
+        args = update.message.text.split()
+        if len(args) < 3:
+            await update.message.reply_text(" Use format: `/login [Access_ID] [Password]`")
+            return
+            
+        access_id = args[1]
+        password = args[2]
         
         context.user_data['temp_access_id'] = access_id
         context.user_data['temp_password'] = password
@@ -82,7 +82,7 @@ async def login(update: Update, context):
         row = []
         for i, bot in enumerate(HELPER_BOTS, start=1):
             link = f"https://t.me{bot['username']}?startgroup=true"
-            row.append(InlineKeyboardButton(text=f"  {i}", url=link))
+            row.append(InlineKeyboardButton(text=f" Bot {i}", url=link))
             if len(row) == 2:
                 keyboard.append(row)
                 row = []
@@ -91,52 +91,53 @@ async def login(update: Update, context):
         
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(
-            " *      !*\n\n"
-            "          23      \n\n"
-            " *:*       ,               :\n`/setup`",
+            f" *Login Credentials Cached!*\n\n"
+            f" ID: `{access_id}`\n"
+            f" Now click the buttons below to ADD all 23 bots to your group.\n\n"
+            f" *Important:* After adding all bots as Admin, go to your group and type:\n`/setup`",
             reply_markup=reply_markup, parse_mode="Markdown"
         )
-    except IndexError:
-        await update.message.reply_text("  : `/login [_Access_ID] [_]`")
+    except Exception as e:
+        await update.message.reply_text(f" Error during login: {str(e)}")
 
 async def setup_group(update: Update, context):
     if update.effective_chat.type not in ["group", "supergroup"]:
-        await update.message.reply_text("        ")
+        await update.message.reply_text(" This command works only inside Telegram Groups.")
         return
     
     if update.effective_user.id == ADMIN_ID:
         generate_user_credentials("ADMIN_TEST", "ADMIN_PASS", days=365)
         status = login_and_lock_group("ADMIN_TEST", "ADMIN_PASS", update.effective_chat.id)
         if status in ["success", "group_already_used"]:
-            await update.message.reply_text("  :       !")
+            await update.message.reply_text(" Owner Special: Group activated successfully!")
             return
 
     access_id = context.user_data.get('temp_access_id')
     password = context.user_data.get('temp_password')
     
     if not access_id or not password:
-        await update.message.reply_text("         `/login` ,     ")
+        await update.message.reply_text(" Please go to Bot PM and `/login` first, then run this command here.")
         return
         
     status = login_and_lock_group(access_id, password, update.effective_chat.id)
     
     if status == "success":
-        await update.message.reply_text("  !             23  -   ")
+        await update.message.reply_text(" Congratulations! Your group is now LOCKED & VERIFIED. 23x Reaction Blast is active!")
     elif status == "group_already_used":
-        await update.message.reply_text("          ")
+        await update.message.reply_text(" This group is already locked with another license.")
     elif status == "wrong_group":
-        await update.message.reply_text("            ")
+        await update.message.reply_text(" Your Access ID is already locked with a different group.")
     elif status == "expired":
-        await update.message.reply_text("      (Expiry)    ")
+        await update.message.reply_text(" Your VIP license has expired.")
     else:
-        await update.message.reply_text("  !       ")
+        await update.message.reply_text(" Invalid Login Credentials! Please log in again in PM.")
 
 async def help_command(update: Update, context):
     help_text = (
-        " *  :*\n\n"
-        " `/start`      \n"
-        " `/login [ID] [Password]`     \n"
-        " `/setup`         "
+        " *Available Commands:*\n\n"
+        " `/start`  Start the bot\n"
+        " `/login [ID] [Password]`  Login and get 23 buttons\n"
+        " `/setup`  Run inside group to lock and start reactions."
     )
     await update.message.reply_text(help_text, parse_mode="Markdown")
 
@@ -144,18 +145,23 @@ async def gen_key(update: Update, context):
     if update.effective_user.id != ADMIN_ID:
         return
     try:
-        new_id = context.args[0]
-        new_pass = context.args[1]
-        days = int(context.args[2]) if len(context.args) > 2 else 30
+        args = update.message.text.split()
+        if len(args) < 3:
+            await update.message.reply_text(" Use format: `/gen [ID] [Password] [Days]`")
+            return
+            
+        new_id = args[1]
+        new_pass = args[2]
+        days = int(args[3]) if len(args) > 3 else 30
         
         if generate_user_credentials(new_id, new_pass, days):
-            await update.message.reply_text(f"   :\nID: `{new_id}`\nPass: `{new_pass}`\nDays: {days}")
+            await update.message.reply_text(f" VIP Credentials Generated:\nID: `{new_id}`\nPass: `{new_pass}`\nDays: {days}")
         else:
-            await update.message.reply_text("      ")
-    except IndexError:
-        await update.message.reply_text("  : `/gen [ID] [Password] [Days]`")
+            await update.message.reply_text(" Error generating credentials.")
+    except Exception as e:
+        await update.message.reply_text(f" Format Error: {str(e)}")
 
-# ====================     ====================
+# ==================== CORE AUTO REACTION ENGINE ====================
 async def send_reaction_async(client, token, chat_id, message_id, reaction):
     try:
         url = f"https://telegram.org{token}/setMessageReaction"
