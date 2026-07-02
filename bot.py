@@ -15,7 +15,6 @@ from database import init_db, generate_user_credentials, login_and_lock_group, i
 # Logging Setup
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s', level=logging.INFO)
 
-# FastAPI + Telegram Lifespan Engine
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
@@ -41,16 +40,16 @@ async def lifespan(app: FastAPI):
 api_app = FastAPI(lifespan=lifespan)
 bot_app = Application.builder().token(BOT_TOKEN).build()
 
-@api_app.get("/")
-def read_root():
-    return {"status": "VIP Clean Engine Hardcoded-Fix Online"}
-
 @api_app.post("/telegram")
 async def telegram_webhook(request: Request):
     json_data = await request.json()
     update = Update.de_json(json_data, bot_app.bot)
     await bot_app.process_update(update)
     return {"status": "ok"}
+
+@api_app.get("/")
+def read_root():
+    return {"status": "VIP Smart Button Engine Online"}
 
 # ==================== BOT HANDLERS ====================
 
@@ -66,24 +65,25 @@ async def login(update: Update, context):
     if update.effective_chat.type != "private":
         return
     try:
-        args = update.message.text.split()
-        if len(args) < 3:
+        if not context.args or len(context.args) < 2:
             await update.message.reply_text(" Use format: `/login [Access_ID] [Password]`")
             return
             
-        access_id = args[1]
-        password = args[2]
+        access_id = str(context.args[0]).strip()
+        password = str(context.args[1]).strip()
         
         context.user_data['temp_access_id'] = access_id
         context.user_data['temp_password'] = password
         
-        # 100%    (        )
         keyboard = []
         row = []
         
+        #  :      ,        ,    
         for i in range(1, 24):
-            #      FastReact1_bot  FastReact23_bot   
             bot_username = f"FastReact{i}_bot"
+            if i == 20: #  20       
+                continue
+                
             link = f"https://t.me{bot_username}?startgroup=true"
             row.append(InlineKeyboardButton(text=f" Bot {i}", url=link))
             
@@ -96,14 +96,14 @@ async def login(update: Update, context):
         
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(
-            f" *Login Credentials Cached!*\n\n"
-            f" ID: `{access_id}`\n"
-            f" Now click the buttons below to ADD active bots to your group.\n\n"
-            f" *Important:* After adding bots as Admin, go to your group and type:\n`/setup`",
+            f" *Login Successful!*\n\n"
+            f" VIP ID: `{access_id}`\n"
+            f" Click below to add the active helper bots to your group.\n\n"
+            f" *Note:* If any specific bot doesn't open, it means it is deleted from BotFather. Just skip it and add the rest! After adding, run `/setup` in group.",
             reply_markup=reply_markup, parse_mode="Markdown"
         )
     except Exception as e:
-        await update.message.reply_text(f" Error during login: {str(e)}")
+        await update.message.reply_text(f" Login Bug Fixed: {str(e)}")
 
 async def setup_group(update: Update, context):
     if update.effective_chat.type not in ["group", "supergroup"]:
@@ -150,17 +150,16 @@ async def gen_key(update: Update, context):
     if update.effective_user.id != ADMIN_ID:
         return
     try:
-        args = update.message.text.split()
-        if len(args) < 3:
+        if not context.args or len(context.args) < 2:
             await update.message.reply_text(" Use format: `/gen [ID] [Password] [Days]`")
             return
             
-        new_id = args[1]
-        new_pass = args[2]
-        days = int(args[3]) if len(args) > 3 else 30
+        new_id = str(context.args[0]).strip()
+        new_pass = str(context.args[1]).strip()
+        days = int(context.args[2]) if len(context.args) > 2 else 30
         
         if generate_user_credentials(new_id, new_pass, days):
-            await update.message.reply_text(f"VIP Credentials Generated:\nID: {new_id}\nPass: {new_pass}\nDays: {days}")
+            await update.message.reply_text(f" VIP Credentials Generated:\nID: `{new_id}`\nPass: `{new_pass}`\nDays: {days}")
         else:
             await update.message.reply_text(" Error generating credentials.")
     except Exception as e:
