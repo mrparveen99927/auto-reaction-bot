@@ -6,15 +6,25 @@ from config import DB_NAME
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
+    # यहाँ chat_id का नया कॉलम जोड़ा गया है ब्रॉडकास्ट के लिए
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS users (
         access_id TEXT PRIMARY KEY,
         password TEXT,
         group_id INTEGER UNIQUE,
         expiry_date TEXT,
-        status TEXT DEFAULT 'active'
+        status TEXT DEFAULT 'active',
+        chat_id INTEGER
     )
     ''')
+    conn.commit()
+    conn.close()
+
+def save_chat_id(access_id, chat_id):
+    """यूजर की पर्सनल चैट आईडी अपडेट करने के लिए"""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET chat_id = ? WHERE access_id = ?", (chat_id, access_id))
     conn.commit()
     conn.close()
 
