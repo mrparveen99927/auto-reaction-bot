@@ -4,7 +4,6 @@ ADMIN_ID = 1780858471
 VIP_PASSWORD = "PREMIUM_VIP_2026"
 DB_NAME = "bot_users.db"
 
-# अपने सभी 23 हेल्पर बोट्स के नए टोकन यहाँ डालें
 HELPER_BOTS = [
     {"token": "नया_टोकन_1", "username": "FastReact1_bot"},
     {"token": "नया_टोकन_2", "username": "FastReact2_bot"},
@@ -25,7 +24,7 @@ HELPER_BOTS = [
     {"token": "नया_टोकन_17", "username": "FastReact17_bot"},
     {"token": "नया_टोकन_18", "username": "FastReact18_bot"},
     {"token": "नया_टोकन_19", "username": "FastReact19_bot"},
-    {"token": "नया_टोकन_20", "username": "FastReact20_bot"}, # जो मिसिंग था उसे जोड़ दिया है
+    {"token": "नया_टोकन_20", "username": "FastReact20_bot"},
     {"token": "नया_टोकन_21", "username": "FastReact21_bot"},
     {"token": "नया_टोकन_22", "username": "FastReact22_bot"},
     {"token": "नया_टोकन_23", "username": "FastReact23_bot"}
