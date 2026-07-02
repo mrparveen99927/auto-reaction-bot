@@ -43,7 +43,7 @@ bot_app = Application.builder().token(BOT_TOKEN).build()
 
 @api_app.get("/")
 def read_root():
-    return {"status": "VIP Clean Engine Button-Fix Online"}
+    return {"status": "VIP Clean Engine Hardcoded-Fix Online"}
 
 @api_app.post("/telegram")
 async def telegram_webhook(request: Request):
@@ -77,19 +77,15 @@ async def login(update: Update, context):
         context.user_data['temp_access_id'] = access_id
         context.user_data['temp_password'] = password
         
+        # 100%    (        )
         keyboard = []
         row = []
-        bot_count = 1
         
-        for bot in HELPER_BOTS:
-            username = bot.get("username", "").strip()
-            #          
-            if not username or username.lower() == "bot" or "?" in username:
-                continue
-                
-            link = f"https://t.me{username}?startgroup=true"
-            row.append(InlineKeyboardButton(text=f" Bot {bot_count}", url=link))
-            bot_count += 1
+        for i in range(1, 24):
+            #      FastReact1_bot  FastReact23_bot   
+            bot_username = f"FastReact{i}_bot"
+            link = f"https://t.me{bot_username}?startgroup=true"
+            row.append(InlineKeyboardButton(text=f" Bot {i}", url=link))
             
             if len(row) == 2:
                 keyboard.append(row)
@@ -97,10 +93,6 @@ async def login(update: Update, context):
                 
         if row:
             keyboard.append(row)
-            
-        if not keyboard:
-            await update.message.reply_text(" Error: No valid helper bots found in config list.")
-            return
         
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(
@@ -168,7 +160,7 @@ async def gen_key(update: Update, context):
         days = int(args[3]) if len(args) > 3 else 30
         
         if generate_user_credentials(new_id, new_pass, days):
-            await update.message.reply_text(f" VIP Credentials Generated:\nID: `{new_id}`\nPass: `{new_pass}`\nDays: {days}")
+            await update.message.reply_text(f"VIP Credentials Generated:\nID: {new_id}\nPass: {new_pass}\nDays: {days}")
         else:
             await update.message.reply_text(" Error generating credentials.")
     except Exception as e:
