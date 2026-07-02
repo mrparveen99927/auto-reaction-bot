@@ -8,9 +8,20 @@ from fastapi import FastAPI, Request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
+# ---  : Python 3.13/3.14        ---
+try:
+    import telegram.ext
+    if not hasattr(telegram.ext.Updater, '_Updater__polling_cleanup_cb'):
+        setattr(telegram.ext.Updater, '_Updater__polling_cleanup_cb', lambda *args, **kwargs: None)
+except Exception:
+    pass
+# -------------------------------------------------------------
+
+#      
 from config import BOT_TOKEN, ADMIN_ID, VIP_PASSWORD, HELPER_BOTS
 from database import init_db, generate_user_credentials, login_and_lock_group, is_group_allowed
 
+#  
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s', level=logging.INFO)
 
 api_app = FastAPI()
