@@ -8,11 +8,9 @@ from fastapi import FastAPI, Request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
-#      
 from config import BOT_TOKEN, ADMIN_ID, VIP_PASSWORD, HELPER_BOTS
 from database import init_db, generate_user_credentials, login_and_lock_group, is_group_allowed
 
-#  
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s', level=logging.INFO)
 
 api_app = FastAPI()
@@ -44,7 +42,6 @@ async def login(update: Update, context):
         access_id = context.args[0]
         password = context.args[1]
         
-        #  /setup      
         context.user_data['temp_access_id'] = access_id
         context.user_data['temp_password'] = password
         
@@ -74,7 +71,6 @@ async def setup_group(update: Update, context):
         await update.message.reply_text("        ")
         return
     
-    #    
     if update.effective_user.id == ADMIN_ID:
         generate_user_credentials("ADMIN_TEST", "ADMIN_PASS", days=365)
         status = login_and_lock_group("ADMIN_TEST", "ADMIN_PASS", update.effective_chat.id)
@@ -106,12 +102,11 @@ async def help_command(update: Update, context):
     help_text = (
         " *  :*\n\n"
         " `/start`      \n"
-        " `/login [ID] [Password]`    23    \n"
+        " `/login [ID] [Password]`     \n"
         " `/setup`         "
     )
     await update.message.reply_text(help_text, parse_mode="Markdown")
 
-#         (       )
 async def gen_key(update: Update, context):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -121,13 +116,12 @@ async def gen_key(update: Update, context):
         days = int(context.args[2]) if len(context.args) > 2 else 30
         
         if generate_user_credentials(new_id, new_pass, days):
-            await update.message.reply_text(f"    :\nID: `{new_id}`\nPass: `{new_pass}`\nDays: {days}")
+            await update.message.reply_text(f"   :\nID: `{new_id}`\nPass: `{new_pass}`\nDays: {days}")
         else:
-            await update.message.reply_text("       ")
+            await update.message.reply_text("      ")
     except IndexError:
         await update.message.reply_text("  : `/gen [ID] [Password] [Days]`")
 
-# ====================     ====================
 async def send_reaction_async(client, token, chat_id, message_id, reaction):
     try:
         url = f"https://telegram.org{token}/setMessageReaction"
@@ -146,8 +140,6 @@ async def auto_react(update: Update, context):
         return
     
     group_id = update.effective_chat.id
-    
-    #          
     if not is_group_allowed(group_id):
         return
 
@@ -163,7 +155,7 @@ async def auto_react(update: Update, context):
 
 @api_app.on_event("startup")
 async def on_startup():
-    init_db()  #    
+    init_db()
     
     bot_app.add_handler(CommandHandler("start", start))
     bot_app.add_handler(CommandHandler("login", login))
@@ -176,7 +168,6 @@ async def on_startup():
     await bot_app.initialize()
     await bot_app.start()
     
-    #     (Render URL)
     your_render_url = "https://auto-reaction-bot-ayqv.onrender.com"
     await bot_app.bot.set_webhook(url=f"{your_render_url}/telegram")
     logging.info(f" Webhook fully set to: {your_render_url}/telegram")

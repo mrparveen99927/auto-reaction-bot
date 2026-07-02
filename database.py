@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from config import DB_NAME
 
 def init_db():
-    """डेटाबेस और टेबल बनाने के लिए"""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute('''
@@ -20,7 +19,6 @@ def init_db():
     conn.close()
 
 def generate_user_credentials(access_id, password, days=30):
-    """नया वीआईपी लाइसेंस कोड जनरेट करने के लिए"""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     expiry = (datetime.now() + timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
@@ -41,7 +39,6 @@ def generate_user_credentials(access_id, password, days=30):
     return success
 
 def login_and_lock_group(access_id, password, group_id):
-    """यूजर के ग्रुप को बोट के साथ लॉक करने के लिए"""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute(
@@ -75,14 +72,13 @@ def login_and_lock_group(access_id, password, group_id):
         return "wrong_group"
 
 def is_group_allowed(group_id):
-    """चेक करना कि इस ग्रुप का लाइसेंस एक्टिव है या नहीं"""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("SELECT expiry_date FROM users WHERE group_id = ? AND status = 'active'", (group_id,))
     result = cursor.fetchone()
     conn.close()
     if result:
-        if datetime.now() < datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S'):
+        if datetime.now() < datetime.strptime(result, '%Y-%m-%d %H:%M:%S'):
             return True
     return False
     
