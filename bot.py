@@ -1,4 +1,4 @@
-# bot.py - 100% क्रैश फ्री अपडेटेड कोड
+# bot.py - 23x Reaction Bot Commercial Production Ready Code
 
 import os
 import asyncio
@@ -15,24 +15,41 @@ BOT_TOKEN = "8843244865:AAGS47kvrD-ZeOTr-EgxSYFoYY-Cg3SJk-A"
 ADMIN_ID = 1780858471
 MONGO_URI = "mongodb+srv://arena_user:Arena999@cluster0.pluvfcd.mongodb.net/central_wallet_db?appName=Cluster0"
 
-# Telegram API Credentials
+# Telegram API Credentials (my.telegram.org से ले सकते हैं, अभी डिफॉल्ट हैं)
 API_ID = 123456
 API_HASH = "your_api_hash_here"
 
-# ⚠️ यहाँ अपने सभी 23 असली बॉट टोकन कॉमा (,) लगाकर डाल दें
+# आपके द्वारा दिए गए सभी 23 असली बॉट टोकन्स की लिस्ट
 HELPER_TOKENS = [
-    "8843244865:AAGS47kvrD-ZeOTr-EgxSYFoYY-Cg3SJk-A", # उदाहरण के लिए पहला टोकन
-    "TOKEN_BOT_2", "TOKEN_BOT_3", "TOKEN_BOT_4", "TOKEN_BOT_5",
-    "TOKEN_BOT_6", "TOKEN_BOT_7", "TOKEN_BOT_8", "TOKEN_BOT_9", "TOKEN_BOT_10",
-    "TOKEN_BOT_11", "TOKEN_BOT_12", "TOKEN_BOT_13", "TOKEN_BOT_14", "TOKEN_BOT_15",
-    "TOKEN_BOT_16", "TOKEN_BOT_17", "TOKEN_BOT_18", "TOKEN_BOT_19", "TOKEN_BOT_20",
-    "TOKEN_BOT_21", "TOKEN_BOT_22", "TOKEN_BOT_23"
+    "7759702480:AAF9Wts-mQJwo-kABbLH-07efM8oKicdhcM",  # Bot 1
+    "8868273049:AAGbuicV1ytedATSges9dzVeOoBrKbpVfkw",  # Bot 2
+    "8465196381:AAFkCeVgwlzdJKjm80S8bC248AQ3Q4lKzNw",  # Bot 3
+    "8990617369:AAGcVjb__c0DPfYyrPteEg3RqtvI75OVMJU",  # Bot 4
+    "8762982479:AAFpoIEsDKmgNG16Ql56J6F-OPY_1dGGQVg",  # Bot 5
+    "8616922120:AAEZ8xHmIIfqxGMQUkbEHOIGplIPT5uJsc4",  # Bot 6
+    "8954445996:AAEvH-lySAk5FGWX96Bv3i7FA3Dp1X9icVg",  # Bot 7
+    "8728914922:AAHmWtKYSr_y7Fy9oOYzxMQHgJYze3dmkVk",  # Bot 8
+    "8402811457:AAHfQIaYHFdBw12pF9zoapl29nYjRhBIUjs",  # Bot 9
+    "8504826070:AAHAVnCIh0kOMqqFW6UX7nfVOFuRuSmjZJY",  # Bot 10
+    "8864706900:AAG3kAzTOzUDiAlkI-Fahn3V5zyP8MTnhqY",  # Bot 11
+    "8712704500:AAG73EN_YxzXFR7k3pZVSzSLHse99abIz3o",  # Bot 12
+    "8472836823:AAEgwxV2fldYR7KNPlRVdRwjml03-Rpo9h4",  # Bot 13
+    "8519620118:AAESBKU5JF2LrqNvaufnO3u9aFCLZ8iuElQ",  # Bot 14
+    "8519620118:AAESBKU5JF2LrqNvaufnO3u9aFCLZ8iuElQ",  # Bot 15
+    "8684813874:AAFRp1IdRH9Cv19T7g_3BDynCPoy_DAGseA",  # Bot 16
+    "8724817204:AAGg2Z4VTcqpQPAJfqLJCUZyPWurQdeDi4g",  # Bot 17
+    "8818097026:AAFeL60mwgwhngaVxSSHtkdAru2F260Nprg",  # Bot 18
+    "8906790488:AAHiY5IqITVi6LC7mC6cvil79TOHqeU6L_Y",  # Bot 19
+    "8648415907:AAF0FtTCBtKr7ATqIJmKmdVgR9mLIXaUw5A",  # Bot 20
+    "8649993032:AAFzyrnLIMz9MP5lH9uJRb8t7xX98ngk9OA",  # Bot 21
+    "8996480629:AAHMUotLfpF7312HZLP4xuPiUx1EGQ1bXHc",  # Bot 22
+    "8963701519:AAHJ5GfL6yavqWuTr9ixGxdMc6V1JSiqSbI"   # Bot 23
 ]
 
-# ऑटोमैटिक रिएक्शंस की लिस्ट जो रैंडमली पोस्ट पर जाएगी
+# मिक्स और पॉजिटिव रिएक्शंस का पूल
 REACTIONS_POOL = ["👍", "🔥", "❤️", "🥰", "👏", "🎉", "🤩", "🚀", "⚡"]
 
-# 23 हेल्पर बॉट्स के यूजरनेम की लिस्ट जो ग्राहकों को लॉगिन के बाद दिखेगी
+# ग्राहकों को दिखने वाला कीबोर्ड टेक्स्ट
 BOT_LIST_TEXT = """
 @FastReact1_bot   | @FastReact2_bot   | @FastReact3_bot
 @FastReact4_bot   | @FastReact5_bot   | @FastReact6_bot
@@ -52,7 +69,7 @@ users_col = db["reaction_vip_users"]
 # --- MAIN CONTROL BOT CLIENT ---
 main_bot = Client("MainBotEngine", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-# --- FLASK SERVER (Render को लाइव रखने के लिए पोर्ट बाइंडिंग) ---
+# --- FLASK SERVER (Render को एक्टिव रखने के लिए) ---
 flask_app = Flask(__name__)
 
 @flask_app.route('/')
@@ -102,9 +119,9 @@ async def ban_cmd(_, message: Message):
     vip_id = args[1]
     res = await users_col.update_one({"vip_id": vip_id}, {"$set": {"status": "Banned"}})
     if res.modified_count > 0:
-        await message.reply_text(f"🚫 VIP ID `{vip_id}` को बैन कर दिया गया है।")
+        await message.reply_text(f"🚫 VIP ID `{vip_id}` को ब्लॉक कर दिया गया है।")
     else:
-        await message.reply_text("❌ आईडी नहीं मिली।")
+        await message.reply_text("❌ यह आईडी डेटाबेस में नहीं मिली।")
 
 @main_bot.on_message(filters.command("stats") & filters.user(ADMIN_ID))
 async def stats_cmd(_, message: Message):
@@ -134,7 +151,7 @@ async def login_cmd(_, message: Message):
         await message.reply_text("❌ गलत VIP ID या पासवर्ड।")
         return
     if account["status"] == "Banned":
-        await message.reply_text("🚫 आपका अकाउंट बैन कर दिया गया है!")
+        await message.reply_text("🚫 आपका अकाउंट एडमिन द्वारा सस्पेंड कर दिया गया है!")
         return
     if datetime.now() > account["expires_on"]:
         await message.reply_text("⏳ आपका प्रीमियम प्लान समाप्त (Expire) हो चुका है!")
@@ -144,7 +161,7 @@ async def login_cmd(_, message: Message):
         chat_info = await main_bot.get_chat(target_chat)
         chat_id = str(chat_info.id)
     except Exception:
-        await message.reply_text("❌ बॉट आपके चैनल को ढूंढ नहीं पाया। सुनिश्चित करें कि चैनल पब्लिक है या बॉट उसमें मौजूद है।")
+        await message.reply_text("❌ बॉट आपके चैनल को ढूंढ नहीं पाया। सुनिश्चित करें कि चैनल पब्लिक है या मुख्य बॉट उसमें मेंबर है।")
         return
 
     if account.get("chat_id") and account["chat_id"] != chat_id:
@@ -181,12 +198,10 @@ async def reaction_handler(_, message: Message):
     if not allowed or datetime.now() > allowed["expires_on"]:
         return
 
-    print(f"✨ VIP Channel Post Detected in {chat_id}. Discharging 23x reactions...")
+    print(f"✨ VIP Channel Post Detected in {chat_id}. Sending reactions...")
 
     # सभी 23 बॉट्स से बारी-बारी रिएक्शन दिलवाना (0.2 सेकंड के गैप पर)
     for index, token in enumerate(HELPER_TOKENS):
-        if token.startswith("TOKEN_"): # नकली टोकन को स्किप करने के लिए
-            continue
         try:
             async with Client(f"worker_{index}", api_id=API_ID, api_hash=API_HASH, bot_token=token) as worker:
                 chosen_reaction = random.choice(REACTIONS_POOL)
@@ -198,14 +213,13 @@ async def reaction_handler(_, message: Message):
 
 # --- STARTUP LOGIC ---
 async def start_all():
-    # Flask को बैकग्राउंड थ्रेड में चलाना
     t = threading.Thread(target=run_flask)
     t.daemon = True
     t.start()
     
     print("🤖 Main Control Bot Starting...")
     await main_bot.start()
-    print("🚀 Bot Business System is fully ONLINE!")
+    print("🚀 Bot Business System is fully ONLINE with 23 Worker Bots!")
     await asyncio.Event().wait()
 
 if __name__ == "__main__":
