@@ -1,55 +1,51 @@
-# admin_handlers.py
-import asyncio
-from telegram import Update
-from config import ADMIN_ID
+# admin_handlers.py - सिर्फ आपके (Admin) कमांड्स
+
+from pyrogram import Client, filters
+from pyrogram.types import Message
+import config
 import database
 
-async def gen_key(update: Update, context):
-    if update.effective_user.id != ADMIN_ID: return
-    try:
-        text_parts = update.message.text.split()
-        if len(text_parts) < 3:
-            await update.message.reply_text("Format: /gen [ID] [Password] [Days]")
-            return
-        new_id = str(text_parts[1]).strip()
-        new_pass = str(text_parts[2]).strip()
-        days = int(text_parts[3]) if len(text_parts) > 3 else 30
-        if await database.generate_user_credentials(new_id, new_pass, days):
-            await update.message.reply_text(f"VIP Key Created.\nID: `{new_id}`\nPass: `{new_pass}`", parse_mode="Markdown")
-    except Exception as e: await update.message.reply_text(str(e))
+@Client.on_message(filters.command("gen") & filters.user(config.ADMIN_ID))
+async def gen_command(_, message: Message):
+    args = message.command
+    if len(args) < 4:
+        await message.reply_text("❌ **गलत फॉर्मेट!**\nयूज़ करें: `/gen [id] [password] [days]`")
+        return
+    
+    vip_id, password, days = args[1], args[2], int(args[3])
+    expiry = await database.add_or_renew_user(vip_id, password, days)
+    
+    await message.reply_text(
+        f"✅ **VIP Account Created Successfully!**\n\n"
+        f"🔑 **ID:** `{vip_id}`\n"
+        f"🔒 **Pass:** `{password}`\n"
+        f"⏳ **Validity:** {days} Days\n"
+        f"📅 **Expires On:** {expiry.strftime('%Y-%m-%d %H:%M:%S')}"
+    )
 
-async def rem_key(update: Update, context):
-    if update.effective_user.id != ADMIN_ID: return
-    try:
-        text_parts = update.message.text.split()
-        if len(text_parts) < 2: return
-        target_id = str(text_parts[1]).strip()
-        if await database.db_delete_key(target_id) > 0:
-            await update.message.reply_text("Deleted successfully.")
-    except Exception as e: await update.message.reply_text(str(e))
+@Client.on_message(filters.command("ban") & filters.user(config.ADMIN_ID))
+async def ban_command(_, message: Message):
+    args = message.command
+    if len(args) < 2:
+        await message.reply_text("❌ **गलत फॉर्मेट!**\nयूज़ करें: `/ban [vip_id]`")
+        return
+    
+    vip_id = args[1]
+    success = await database.ban_vip_user(vip_id)
+    if success:
+        await message.reply_text(f"🚫 VIP ID `{vip_id}` को सफलतापूर्वक **बैन** कर दिया गया है।")
+    else:
+        await message.reply_text("❌ यह VIP ID डेटाबेस में नहीं मिली।")
 
-async def stats_command(update: Update, context):
-    if update.effective_user.id != ADMIN_ID: return
-    t, a = await database.db_get_stats()
-    await update.message.reply_text(f"Total Keys: {t}\nActive Groups: {a}")
-
-async def users_list(update: Update, context):
-    if update.effective_user.id != ADMIN_ID: return
-    rows = await database.db_get_users()
-    reply = "VIP Users:\n"
-    for r in rows: reply += f"ID: {r[0]} | Bound Chat: {r[2] if r[2] else 'None'}\n"
-    await update.message.reply_text(reply)
-
-async def broadcast(update: Update, context):
-    if update.effective_user.id != ADMIN_ID: return
-    text_parts = update.message.text.split(None, 1)
-    if len(text_parts) < 2: return
-    msg = text_parts[1]
-    chats = await database.db_get_broadcast_chats()
-    for c in chats:
-        try:
-            await context.bot.send_message(chat_id=c[0], text=f"NOTICE:\n\n{msg}")
-            await asyncio.sleep(0.2)
-        except: pass
-    await update.message.reply_text("Broadcast Done.")
+@Client.on_message(filters.command("stats") & filters.user(config.ADMIN_ID))
+async def stats_command(_, message: Message):
+    total, active, banned, locked = await database.get_db_stats()
+    stats_msg = (
+        f"📊 **Reaction Bot Live Stats:**\n\n"
+        f"👥 कुल VIP आईडी: {total}\n"
+        f"🟢 एक्टिव यूज़र्स: {active}\n"
+        f"🚫 बैन यूज़र्स: {banned}\n"
+        f"🔒 लॉक्ड चैनल/ग्रुप्स: {locked}"
+    )
+    await message.reply_text(stats_msg)
     

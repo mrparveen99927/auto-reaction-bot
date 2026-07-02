@@ -1,118 +1,77 @@
-# user_handlers.py
+# user_handlers.py - कस्टमर्स के कमांड्स और सख्त लॉगिन
+
+from pyrogram import Client, filters
+from pyrogram.types import Message
 from datetime import datetime
-from telegram import Update
-from config import ADMIN_ID
 import database
 
-async def start(update: Update, context):
-    if update.effective_chat.type == "private":
-        await update.message.reply_text(
-            "🚀 *VIP Multi-Auto-Reaction Bot Online!*\n\n"
-            "📝 *For Groups Setup:*\n"
-            "Send: `/login [Access_ID] [Password]` then run `/setup` in group.\n\n"
-            "📢 *For Channels Setup:*\n"
-            "Send: `/login [Access_ID] [Password] [Channel_ID_or_@Username]`\n\n"
-            "⏳ Use `/status` to check remaining days.",
-            parse_mode="Markdown"
-        )
+BOT_LIST_TEXT = """
+@FastReact1_bot   | @FastReact2_bot   | @FastReact3_bot
+@FastReact4_bot   | @FastReact5_bot   | @FastReact6_bot
+@FastReact7_bot   | @FastReact8_bot   | @FastReact9_bot
+@FastReact10_bot  | @FastReact11_bot  | @FastReact12_bot
+@FastReact13_bot  | @FastReact14_bot  | @FastReact15_bot
+@FastReact16_bot  | @FastReact17_bot  | @FastReact18_bot
+@FastReact19_bot  | @FastReact20_bot  | @FastReact21_bot
+@FastReact22_bot  | @FastReact23_bot
+"""
 
-async def login(update: Update, context):
-    if update.effective_chat.type != "private": return
-    try:
-        text_parts = update.message.text.split()
-        if len(text_parts) < 3:
-            await update.message.reply_text("❌ Format: `/login [ID] [Pass]` or `/login [ID] [Pass] [ChannelID_or_@Username]`")
-            return
-            
-        access_id = str(text_parts[1]).strip()
-        password = str(text_parts[2]).strip()
-        
-        res = await database.users_collection.find_one({"access_id": access_id})
-        if not res or res.get("password") != password:
-            await update.message.reply_text("❌ Invalid ID or Password!")
-            return
-            
-        expiry_date = res.get("expiry_date")
-        if res.get("status") != 'active' or datetime.now() > datetime.strptime(expiry_date, '%Y-%m-%d %H:%M:%S'):
-            await update.message.reply_text("❌ Your VIP license has expired!")
-            return
-            
-        await database.save_chat_id(access_id, update.effective_chat.id)
-        
-        lock_msg = "Not locked yet. Run `/setup` inside group to activate."
-        if len(text_parts) > 3:
-            raw_chat_id = text_parts[3].strip()
-            try:
-                if raw_chat_id.startswith('@'):
-                    try:
-                        chat_obj = await context.bot.get_chat(raw_chat_id)
-                        target_chat_id = chat_obj.id
-                    except Exception:
-                        await update.message.reply_text("❌ Channel not found! Admin the main bot first.")
-                        return
-                else:
-                    target_chat_id = int(raw_chat_id)
-                
-                lock_status = await database.login_and_lock_group(access_id, "BYPASS_CHECK", target_chat_id)
-                if lock_status == "success":
-                    lock_msg = f"Locked to Chat ID: `{target_chat_id}`"
-                elif lock_status == "group_already_used":
-                    lock_msg = "⚠️ Chat already locked with another license!"
-                else:
-                    lock_msg = "⚠️ License bound to another chat."
-            except ValueError:
-                lock_msg = "⚠️ Invalid chat format."
+@Client.on_message(filters.command("start") & filters.private)
+async def start_command(_, message: Message):
+    await message.reply_text(
+        "👋 **VIP 23x Reaction Bot में आपका स्वागत है!**\n\n"
+        "अपना प्रीमियम एक्सेस चालू करने के लिए इस फॉर्मेट में लॉगिन करें:\n"
+        "`/login [vip_id] [password] [@your_channel_username]`"
+    )
 
-        msg = (
-            f"✅ *Login Successful!*\n\n"
-            f"🔑 VIP ID: `{access_id}`\n"
-            f"📅 Expires On: `{expiry_date}`\n"
-            f"📡 Status: *{lock_msg}*\n\n"
-            f"🤖 *VIP Helper Bots List (Touch to Copy):*\n\n"
-        )
-        for i in range(1, 24):
-            bot_username = f"FastReact{i}_bot" if i != 20 else "FastReact21_bot"
-            msg += f"{i}. `@{bot_username}`\n"
-            
-        await update.message.reply_text(msg, parse_mode="Markdown")
-    except Exception as e:
-        await update.message.reply_text(f"❌ Login Error: {str(e)}")
-
-async def setup_group(update: Update, context):
-    if update.effective_chat.type not in ["group", "supergroup"]: return
-    user_id = update.effective_user.id
-    if user_id == ADMIN_ID:
-        await database.generate_user_credentials("ADMIN_TEST", "ADMIN_PASS", days=365)
-        status = await database.login_and_lock_group("ADMIN_TEST", "ADMIN_PASS", update.effective_chat.id)
-        if status in ["success", "group_already_used"]:
-            await update.message.reply_text("👑 Group activated for 365 Days!")
-            return
-
-    user_data = await database.users_collection.find_one({"chat_id": user_id})
-    if not user_data:
-        await update.message.reply_text("❌ Please go to Bot PM and `/login` first.")
+@Client.on_message(filters.command("login") & filters.private)
+async def login_command(client: Client, message: Message):
+    args = message.command
+    if len(args) < 4:
+        await message.reply_text("❌ **लॉगिन फॉर्मेट गलत है!**\nयूज़ करें: `/login [vip_id] [password] [@channel]`")
+        return
+    
+    vip_id, password, target_chat = args[1], args[2], args[3]
+    
+    # 1. डेटाबेस से आईडी-पासवर्ड मैच करना
+    account = await database.get_vip_user(vip_id)
+    if not account or account["password"] != password:
+        await message.reply_text("❌ गलत VIP ID या पासवर्ड। कृपया सही क्रेडेंशियल्स डालें।")
         return
         
-    access_id = user_data.get("access_id")
-    status = await database.login_and_lock_group(access_id, "BYPASS_CHECK", update.effective_chat.id)
-    if status == "success":
-        await update.message.reply_text("🎉 Group Verified & Locked!")
-    else:
-        await update.message.reply_text("❌ Activation Error!")
+    if account["status"] == "Banned":
+        await message.reply_text("🚫 आपका यह अकाउंट एडमिन द्वारा ब्लॉक (Banned) कर दिया गया है!")
+        return
 
-async def status_command(update: Update, context):
-    if update.effective_chat.type != "private": return
-    user_id = update.effective_user.id
-    user_data = await database.users_collection.find_one({"chat_id": user_id})
-    if res := user_data:
-        access_id = res.get("access_id")
-        expiry_date = res.get("expiry_date")
-        group_id = res.get("group_id", "Not Bound Yet")
-        time_left = datetime.strptime(expiry_date, '%Y-%m-%d %H:%M:%S') - datetime.now()
-        await update.message.reply_text(f"🔑 ID: `{access_id}`\n📡 Bound Chat: `{group_id}`\n⏳ Left: *{time_left.days} Days*", parse_mode="Markdown")
-    else:
-        await update.message.reply_text("❌ Not logged in.")
+    if datetime.now() > account["expires_on"]:
+        await message.reply_text("⏳ आपका प्रीमियम प्लान समाप्त (Expire) हो चुका है! कृपया रिन्यू कराएं।")
+        return
 
-async def help_command(update: Update, context):
-    await update.message.reply_text("Commands: `/start`, `/login`, `/status`, `/setup`")
+    # 2. चैनल/ग्रुप की असली न्यूमेरिकल ID (-100...) निकालना
+    try:
+        chat_info = await client.get_chat(target_chat)
+        chat_id = str(chat_info.id)
+    except Exception:
+        await message.reply_text("❌ बॉट आपके चैनल को ढूंढ नहीं पाया। सुनिश्चित करें कि चैनल पब्लिक है या हमारा मेन बॉट उसमें मेंबर है।")
+        return
+
+    # 3. सख्त वन-टाइम लॉक नियम (Strict Security Lock)
+    if account["chat_id"] and account["chat_id"] != chat_id:
+        await message.reply_text(f"❌ **सुरक्षा नियम:** यह VIP ID पहले से ही किसी दूसरे चैनल ID (`{account['chat_id']}`) पर लॉक है! आप इसे नए चैनल में इस्तेमाल नहीं कर सकते।")
+        return
+
+    # डेटाबेस में चैट आईडी लॉक करना
+    await database.lock_user_to_chat(vip_id, chat_id, message.from_user.id)
+    
+    # ग्राहकों को दिखाने वाला डैशबोर्ड (जैसा आपके स्क्रीनशॉट में था)
+    dashboard = (
+        f"✅ **Login Successful!**\n\n"
+        f"🔑 **VIP ID:** {vip_id}\n"
+        f"📅 **Expires On:** {account['expires_on'].strftime('%Y-%m-%d %H:%M:%S')}\n"
+        f"🔒 **Status:** Locked to Chat ID: `{chat_id}`\n\n"
+        f"🤖 **VIP Helper Bots List (Touch to Copy):**\n"
+        f"{BOT_LIST_TEXT}\n\n"
+        f"ℹ️ *इन सभी 23 बॉट्स को अपने चैनल में Admin बनाएं (मैसेज भेजने/रिएक्ट करने की अनुमति के साथ)। पोस्ट आते ही रिएक्शंस ऑटोमैटिक शुरू हो जाएंगे!*"
+    )
+    await message.reply_text(dashboard)
     

@@ -1,35 +1,33 @@
-# config.py
+# config.py - क्रेडेंशियल्स और कॉन्फ़िगरेशन फ़ाइल
+
+import os
+
+# --- MAIN BOT & ADMIN SETTINGS ---
+# आपका मेन बॉट टोकन जिससे यूज़र लॉगिन करेंगे
 BOT_TOKEN = "8843244865:AAGS47kvrD-ZeOTr-EgxSYFoYY-Cg3SJk-A"
+
+# आपकी असली टेलीग्राम ID ताकि एडमिन कमांड्स सिर्फ आपके अकाउंट से चलें
 ADMIN_ID = 1780858471
-VIP_PASSWORD = "PREMIUM_VIP_2026"
-DB_NAME = "bot_users.db"
 
-# आपका सुरक्षित क्लाउड डेटाबेस लिंक
+# Pyrogram के लिए बुनियादी क्रेडेंशियल्स (आप my.telegram.org से भी बदल सकते हैं)
+API_ID = 123456
+API_HASH = "your_api_hash_here"
+
+# --- DATABASE SETTINGS ---
+# आपकी लाइव MongoDB कनेक्शन स्ट्रिंग जो डेटाबेस को जोड़ेगी
 MONGO_URI = "mongodb+srv://arena_user:Arena999@cluster0.pluvfcd.mongodb.net/central_wallet_db?appName=Cluster0"
+DB_NAME = "reaction_bot_db"
+COLLECTION_NAME = "reaction_vip_users"
 
-# अपने सभी 23 हेल्पर बोट्स के टोकन यहाँ डालें
-HELPER_BOTS = [
-    {"token": "टोकन_1", "username": "FastReact1_bot"},
-    {"token": "टोकन_2", "username": "FastReact2_bot"},
-    {"token": "टोकन_3", "username": "FastReact3_bot"},
-    {"token": "टोकन_4", "username": "FastReact4_bot"},
-    {"token": "टोकन_5", "username": "FastReact5_bot"},
-    {"token": "टोकन_6", "username": "FastReact6_bot"},
-    {"token": "टोकन_7", "username": "FastReact7_bot"},
-    {"token": "टोकन_8", "username": "FastReact8_bot"},
-    {"token": "टोकन_9", "username": "FastReact9_bot"},
-    {"token": "टोकन_10", "username": "FastReact10_bot"},
-    {"token": "टोकन_11", "username": "FastReact11_bot"},
-    {"token": "टोकन_12", "username": "FastReact12_bot"},
-    {"token": "टोकन_13", "username": "FastReact13_bot"},
-    {"token": "टोकन_14", "username": "FastReact14_bot"},
-    {"token": "टोकन_15", "username": "FastReact15_bot"},
-    {"token": "टोकन_16", "username": "FastReact16_bot"},
-    {"token": "टोकन_17", "username": "FastReact17_bot"},
-    {"token": "टोकन_18", "username": "FastReact18_bot"},
-    {"token": "टोकन_19", "username": "FastReact19_bot"},
-    {"token": "टोकन_20", "username": "FastReact20_bot"},
-    {"token": "टोकन_21", "username": "FastReact21_bot"},
-    {"token": "टोकन_22", "username": "FastReact22_bot"},
-    {"token": "टोकन_23", "username": "FastReact23_bot"}
+# --- 23 HELPER BOTS TOKENS ---
+# यहाँ आपको अपने सभी 23 हेल्पर्स बॉट्स के टोकन कॉमा (,) लगाकर डालने हैं
+HELPER_TOKENS = [
+    "TOKEN_BOT_1", "TOKEN_BOT_2", "TOKEN_BOT_3", "TOKEN_BOT_4", "TOKEN_BOT_5",
+    "TOKEN_BOT_6", "TOKEN_BOT_7", "TOKEN_BOT_8", "TOKEN_BOT_9", "TOKEN_BOT_10",
+    "TOKEN_BOT_11", "TOKEN_BOT_12", "TOKEN_BOT_13", "TOKEN_BOT_14", "TOKEN_BOT_15",
+    "TOKEN_BOT_16", "TOKEN_BOT_17", "TOKEN_BOT_18", "TOKEN_BOT_19", "TOKEN_BOT_20",
+    "TOKEN_BOT_21", "TOKEN_BOT_22", "TOKEN_BOT_23"
 ]
+
+# ऑटोमैटिक रिएक्शंस की लिस्ट जो रैंडमली पोस्ट पर जाएगी
+REACTIONS_POOL = ["👍", "🔥", "❤️", "🥰", "👏", "🎉", "🤩", "🚀", "⚡"]

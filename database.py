@@ -1,81 +1,60 @@
-# database.py
-import motor.motor_asyncio
+# database.py - डेटाबेस हैंडलर फ़ाइल
+
+from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime, timedelta
-from config import MONGO_URI
+import config
 
-client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI)
-db = client["reaction_bot_db"]
-users_collection = db["reaction_vip_users"]
+# MongoDB से कनेक्शन स्थापित करना
+client = AsyncIOMotorClient(config.MONGO_URI)
+db = client[config.DB_NAME]
+users_col = db[config.COLLECTION_NAME]
 
-def init_db():
-    pass
-
-async def save_chat_id(access_id, chat_id):
-    await users_collection.update_one(
-        {"access_id": access_id},
-        {"$set": {"chat_id": chat_id}}
-    )
-
-async def generate_user_credentials(access_id, password, days=30):
-    expiry = (datetime.now() + timedelta(days=days)).strftime('%Y-%m-%d %H:%M:%S')
-    await users_collection.update_one(
-        {"access_id": access_id},
+async def add_or_renew_user(vip_id, password, days):
+    """एडमिन द्वारा नया यूजर बनाने या रिन्यू करने के लिए"""
+    expiry_date = datetime.now() + timedelta(days=days)
+    await users_col.update_one(
+        {"vip_id": vip_id},
         {"$set": {
             "password": password,
-            "expiry_date": expiry,
-            "status": "active"
+            "expires_on": expiry_date,
+            "status": "Active"
+        }, "$setOnInsert": {
+            "chat_id": None, # जब तक लॉगिन न हो, खाली रहेगा
+            "telegram_user_id": None
         }},
         upsert=True
     )
-    return True
+    return expiry_date
 
-async def login_and_lock_group(access_id, password, group_id):
-    user = await users_collection.find_one({"access_id": access_id, "status": "active"})
-    if not user: return "invalid"
-    if password != "BYPASS_CHECK" and user["password"] != password: return "invalid"
-    
-    expiry_date = user["expiry_date"]
-    if datetime.now() > datetime.strptime(expiry_date, '%Y-%m-%d %H:%M:%S'): return "expired"
-        
-    locked_group = user.get("group_id")
-    if locked_group is None:
-        existing_group = await users_collection.find_one({"group_id": group_id})
-        if existing_group and existing_group["access_id"] != access_id: return "group_already_used"
-            
-        await users_collection.update_one(
-            {"access_id": access_id},
-            {"$set": {"group_id": group_id}}
-        )
-        return "success"
-    elif locked_group == group_id: return "success"
-    else: return "wrong_group"
+async def ban_vip_user(vip_id):
+    """यूजर को बैन करने के लिए"""
+    res = await users_col.update_one({"vip_id": vip_id}, {"$set": {"status": "Banned"}})
+    return res.modified_count > 0
 
-async def is_group_allowed(group_id):
-    user = await users_collection.find_one({"group_id": group_id, "status": "active"})
-    if user:
-        if datetime.now() < datetime.strptime(user["expiry_date"], '%Y-%m-%d %H:%M:%S'): return True
+async def get_vip_user(vip_id):
+    """यूजर का डेटा निकालने के लिए"""
+    return await users_col.find_one({"vip_id": vip_id})
+
+async def check_chat_permission(chat_id):
+    """रिएक्शन इंजन के लिए: चेक करता है कि चैनल एक्टिव है या नहीं"""
+    user = await users_col.find_one({"chat_id": str(chat_id)})
+    if user and user["status"] == "Active":
+        if datetime.now() < user["expires_on"]:
+            return True
     return False
 
-async def db_delete_key(target_id):
-    res = await users_collection.delete_one({"access_id": target_id})
-    return res.deleted_count
+async def lock_user_to_chat(vip_id, chat_id, telegram_user_id):
+    """लॉगिन के वक्त वन-टाइम चैनल ID लॉक करने के लिए"""
+    await users_col.update_one(
+        {"vip_id": vip_id},
+        {"$set": {"chat_id": str(chat_id), "telegram_user_id": telegram_user_id}}
+    )
 
-async def db_get_stats():
-    total_users = await users_collection.count_documents({})
-    active_groups = await users_collection.count_documents({"group_id": {"$exists": True, "$ne": None}})
-    return total_users, active_groups
-
-async def db_get_users():
-    cursor = users_collection.find({})
-    users = []
-    async for doc in cursor:
-        users.append((doc["access_id"], doc.get("password"), doc.get("group_id"), doc["expiry_date"]))
-    return users
-
-async def db_get_broadcast_chats():
-    cursor = users_collection.find({"chat_id": {"$exists": True, "$ne": None}})
-    chats = []
-    async for doc in cursor:
-        chats.append((doc["chat_id"],))
-    return chats
+async def get_db_stats():
+    """एड敏 के लिए स्टैट्स इकट्ठा करना"""
+    total = await users_col.count_documents({})
+    active = await users_col.count_documents({"status": "Active"})
+    banned = await users_col.count_documents({"status": "Banned"})
+    locked = await users_col.count_documents({"chat_id": {"$ne": None}})
+    return total, active, banned, locked
     
