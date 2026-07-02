@@ -1,9 +1,14 @@
 # config.py
+
+# Main Bot Token and Owner Settings
 BOT_TOKEN = "8843244865:AAGS47kvrD-ZeOTr-EgxSYFoYY-Cg3SJk-A"
 ADMIN_ID = 1780858471
 VIP_PASSWORD = "PREMIUM_VIP_2026"
+
+# Database filename
 DB_NAME = "bot_users.db"
 
+# 23 Helper Bots list for auto reaction blast
 HELPER_BOTS = [
     {"token": "7759702480:AAF9Wts-mQJwo-kABbLH-07efM8oKicdhcM", "username": "FastReact1_bot"},
     {"token": "8868273049:AAGbuicV1ytedATSges9dzVeOoBrKbpVfkw", "username": "FastReact2_bot"},
@@ -20,7 +25,7 @@ HELPER_BOTS = [
     {"token": "8472836823:AAEgwxV2-dYR7KNPlRVdRwjml03-Rpo9h4", "username": "FastReact13_bot"},
     {"token": "8519620118:AAESBKU5JF2LrqNvaufnO3u9aFCLZ8iuElQ", "username": "FastReact14_bot"},
     {"token": "8684813874:AAFRp1IdRH9Cv19T7g_3BDynCPoy_DAGseA", "username": "FastReact15_bot"},
-    {"token": "8724817204:AAGg2Z4VTcqpQPAJfqLJCUZyPWurQdeDi4g", "username": "FastReact16_bot"},
+    {"token": "8724817204:AAGg2Z4VTcqpPAJfqLJCUZyPWurQdeDi4g", "username": "FastReact16_bot"},
     {"token": "8818097026:AAFeL60mwgwhngaVxSSHtkdAru2F260Nprg", "username": "FastReact17_bot"},
     {"token": "8906790488:AAHiY5IqITVi6LC7mC6cvil79TOHqeU6L_Y", "username": "FastReact18_bot"},
     {"token": "8648415907:AAF0FtTCBtKr7ATqIJmKmdVgR9mLIXaUw5A", "username": "FastReact19_bot"},
